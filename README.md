@@ -1,6 +1,6 @@
 ### Portable, transferrable cloud-based filesystem
 
-Greyfish is an out-of-the-box, simple, application for setting up a storage system in the cloud. If you are building a web-application that supports multiple users, having their own space on a shared storage, then Greyfish can be useful as a data "vault". It provides the functionality for helping users upload/download/persist files and directories. 
+Greyfish is a simple, out-of-the-box software for setting up a multi-user, filesystem in the cloud. If you are building a web-application that supports multiple users, having their own space on a shared storage, then Greyfish can be useful as a data "vault". It provides the functionality for helping users upload/download/persist files and directories. 
 
 It will store files and directories without changes on the go.
 All your files will remain protected and visible only to you.
