@@ -117,4 +117,7 @@ curl -X POST -H "Content-Type: application/json" -d '{"key":"examplegrey", "self
 
 The [speed-testing](./speed-testing) subdirectory contains a series of python scripts to test upload and download speeds for a Greyfish server.
 
+#### Additional Notes
+The docker-compose.yml file (https://github.com/ritua2/greyfish/blob/master/docker-compose.yml) has the specification for creating Docker volumes. These volumes help in persisting the data on the hard-disk even after the container is brought down. One volume is for the influxdb database for storing logs, and the other one is for saving users' data.
+
 
