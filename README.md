@@ -1,17 +1,12 @@
 ### Portable, transferrable cloud-based filesystem
-Greyfish is a simple, out-of-the-box software for provisioning a multi-user, filesystem in the cloud. If you are building a web-application for which you need to support multiple users, having their personal space on a shared storage, then Greyfish can be useful in this scenario. It helps in creating a data "vault" with appropriate access privileges for the users. It provides the functionality for file-management - file/folder upload, file/folder download, and data persistence. It is built using Docker and currently runs as a single Docker container. However, shortly, we will release a distributed version of Greyfish such that it can leverage the storage space on multiple Virtual Machines (VMs) for load-balancing.
-
-It will store files and directories without changes on the go.
-All your files will remain protected and visible only to you.
-Keep your user data safe and portable in a docker container.
-
-Powered with a wsgi server, access your files through multiple threads. 
-Data can be easily monitored using grafana or any other app.  
-
-Allows single use tokens for specifc actions. These tokens are stored within an attached redis server on port 6379, and can be accessed, created, or deleted
-from other another server or container within the same machine.
+Greyfish is a simple, out-of-the-box software for provisioning a multi-user, filesystem in the cloud. If you are building a web-application for which you need to support multiple users, having their personal space on a shared storage, then Greyfish can be useful in this scenario. It helps in creating a data "vault" with appropriate access privileges for the users. It provides the functionality for file-management - file/folder upload, file/folder download, and data persistence. It is built using Docker and currently runs as a single Docker container. However, shortly, we will release a distributed version of Greyfish such that it can leverage the storage space on multiple Virtual Machines (VMs) for load-balancing. The container technology helps in creating a portable service that can be started on or moved to any VM/system that supports Docker.
 
 
+Greyfish is a WSGI application (powerd by a WSGI server), and uses multi-threading.
+
+Data stored in Greyfish can be easily monitored/visualized using grafana or any other app.  
+
+Greyfish provides single-use tokens for specifc actions. These tokens are stored within an attached Redis server on port 6379, and can be accessed, created, or deleted from  another server or container within the same machine.
 
 
 #### Installation  
