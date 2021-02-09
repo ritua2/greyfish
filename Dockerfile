@@ -17,6 +17,7 @@ COPY push_all.py        /grey/push_all.py
 COPY grey_regular.py    /grey/grey_regular.py
 COPY admin.py           /grey/admin.py
 COPY API_Daemon.sh      /grey/API_Daemon.sh
+COPY checksums.py       /grey/checksums.py
 COPY setup.sh           /grey/setup.sh
 
 
