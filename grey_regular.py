@@ -111,7 +111,7 @@ def delete_file(toktok, gkey, FILE, DIR=''):
 
     try:       
         os.remove(GREYFISH_FOLDER+'DIR_'+str(toktok)+'/'+'/'.join(DIR.split('++'))+'/'+str(FILE))
-        bf.greyfish_log(IP_addr, toktok, "delete", "single file", '/'.join(DIR.split('++')), new_nam)
+        bf.greyfish_log(IP_addr, toktok, "delete", "single file", '/'.join(DIR.split('++')), str(FILE))
         return 'File succesfully deleted from Greyfish storage'
 
     except:
