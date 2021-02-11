@@ -17,7 +17,7 @@ services:
     ports:
       - "2000-2004:2000-2004"
     volumes:
-      - "./greyfish/:/greyfish"
+      - "greyfish:/greyfish"
 
     environment:
       - greyfish_key
