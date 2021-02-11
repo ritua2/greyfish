@@ -31,6 +31,7 @@ def valid_key(ukey, username):
         grey_db.close()
         return False
 
+    if user == username:
         cursor.execute("delete from greykeys where token=%s",(ukey,))
         grey_db.commit()
         cursor.close()
