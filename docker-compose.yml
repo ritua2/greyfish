@@ -4,6 +4,7 @@ version: '2'
 volumes:
   greyfish:
   influxdb:
+  mysql:        
 
 
 services:
@@ -23,9 +24,12 @@ services:
       - greyfish_path
       - greyfish_threads
       - URL_BASE
-      - REDIS_AUTH
       - influx_command
       - redis_command
+      - MYSQL_ROOT_PASSWORD
+      - MYSQL_DATABASE
+      - MYSQL_USER
+      - MYSQL_PASSWORD
 
     extends:
       file:
@@ -52,10 +56,16 @@ services:
     command: "$influx_command"
 
 
-  redis:
-    image: 'redis:4-alpine'
+  mysql:
+    image: mysql
     environment:
-      - REDIS_AUTH
-    command: redis-server --requirepass $REDIS_AUTH
+      - MYSQL_ROOT_PASSWORD
+      - MYSQL_DATABASE
+      - MYSQL_USER
+      - MYSQL_PASSWORD
     ports:
-      - '6379:6379'
+      - "6603:3306"
+    volumes:
+      - ./initdb:/docker-entrypoint-initdb.d
+      - mysql:/var/lib/mysql
+

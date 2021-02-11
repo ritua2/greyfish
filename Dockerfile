@@ -24,7 +24,7 @@ COPY setup.sh           /grey/setup.sh
 # Installs the necessary packages
 # Bash for convenience
 RUN apk update && apk add bash curl && mkdir -p /greyfish/sandbox &&\
-    pip3 install gunicorn Flask influxdb redis requests &&\
+    pip3 install gunicorn Flask mysql-connector-python influxdb redis requests &&\
     chmod +x /grey/new_user.py /grey/grey_regular.py /grey/gget_all.py /grey/push_all.py /grey/API_Daemon.sh /grey/admin.py \
     /grey/setup.sh
 

@@ -8,20 +8,10 @@ import os
 import datetime, time
 from pathlib import Path
 from influxdb import InfluxDBClient
-
+import mysql.connector as mysql_con
 
 # Checks for correct codes
 influx_logs = os.environ["influx_command"] == "influxd"
-redis_active = os.environ["redis_command"] == "redis-server --requirepass $REDIS_AUTH"
-
-if redis_active:
-
-    import redis
-
-    # Assigns each token to a valid ID
-    r_tok = redis.Redis(host=os.environ['URL_BASE'], password=os.environ['REDIS_AUTH'], db=3)
-
-
 
 # Checks if the provided user key is valid
 def valid_key(ukey, username):
@@ -29,15 +19,26 @@ def valid_key(ukey, username):
     if ukey == os.environ['greyfish_key']:
         return True
 
-    if redis_active:
-        if r_tok.get(ukey) == None:
-            return False
+    grey_db = mysql_con.connect(host = os.environ["URL_BASE"] , port = 6603, user = os.environ["MYSQL_USER"] , password = os.environ["MYSQL_PASSWORD"], database = os.environ["MYSQL_DATABASE"])
+    cursor = grey_db.cursor(buffered=True)
+    cursor.execute("select username from greykeys where token=%s",(ukey,))
+    user=None
+    for row in cursor:
+        user=row[0]
+            
+    if user == None:
+        cursor.close()
+        grey_db.close()
+        return False
 
-        if r_tok.get(ukey).decode("UTF-8") == username:
-            # Deletes the token since it is single use
-            r_tok.delete(ukey)
-            return True
-
+        cursor.execute("delete from greykeys where token=%s",(ukey,))
+        grey_db.commit()
+        cursor.close()
+        grey_db.close()
+        return True
+    
+    cursor.close()
+    grey_db.close()
     return False
 
 
