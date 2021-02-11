@@ -12,14 +12,15 @@ Greyfish allows single use tokens for specifc actions. These tokens are stored w
 #### Installation (single node)
 
 ```bash
-git clone https://github.com/noderod/greyfish
+git clone https://github.com/ritua2/greyfish
 cd greyfish
+docker volume create --name=greyfish
 # Change the influxdb log credentials
 vi credentials.yml
-mkdir greyfish
-# Set the appropriate passwords and base URL (without / and http(s)://
+# Set environment variables, appropriate passwords and base URL (without / and http(s)://
 # Define the number of threads using "greyfish_threads", default is set to 4
-REDIS_AUTH="examplepass" URL_BASE=example.com greyfish_key="examplegrey" docker-compose up -d
+vi .env
+docker-compose up -d --build
 ```
 
 To rebuild greyfish after changes in the code:
