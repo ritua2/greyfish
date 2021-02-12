@@ -9,7 +9,7 @@ import datetime, time
 from pathlib import Path
 from influxdb import InfluxDBClient
 import redis
-
+import mysql.connector as mysql_con
 
 
 
@@ -39,17 +39,28 @@ def valid_key(ukey, username):
     if ukey == os.environ['greyfish_key']:
         return True
 
-    r_tok = redis.Redis(host=os.environ['URL_BASE'], password=os.environ['REDIS_AUTH'], db=3)
+    grey_db = mysql_con.connect(host = os.environ["URL_BASE"] , port = 6603, user = os.environ["MYSQL_USER"] , password = os.environ["MYSQL_PASSWORD"], database = os.environ["MYSQL_DATABASE"])
 
-    if redis_active:
-        if r_tok.get(ukey) == None:
-            return False
+    cursor = grey_db.cursor(buffered=True)
+    cursor.execute("select username from greykeys where token=%s",(ukey,))
+    user=None
+    for row in cursor:
+        user=row[0]
 
-        if r_tok.get(ukey).decode("UTF-8") == username:
-            # Deletes the token since it is single use
-            r_tok.delete(ukey)
-            return True
+    if user == None:
+        cursor.close()
+        grey_db.close()
+        return False
 
+    if user == username:
+        cursor.execute("delete from greykeys where token=%s",(ukey,))
+        grey_db.commit()
+        cursor.close()
+        grey_db.close()
+        return True
+
+    cursor.close()
+    grey_db.close()
     return False
 
 
@@ -155,8 +166,18 @@ def failed_login(logkey, IP, unam, action, due_to="incorrect_key"):
         password = os.environ['INFLUXDB_WRITE_USER_PASSWORD'], database = 'failed_login')
 
     # Finds if the user is valid or not
-    r_users = redis.Redis(host=os.environ['URL_BASE'], password=os.environ['REDIS_AUTH'], db=5)
-    if r_users.exists(unam):
+    grey_db = mysql_con.connect(host = os.environ["URL_BASE"] , port = 6603, user = os.environ["MYSQL_USER"] , password = os.environ["MYSQL_PASSWORD"], database = os.environ["MYSQL_DATABASE"])
+    cursor = grey_db.cursor(buffered=True)
+    cursor.execute("select * from user where name=%s",(unam,))
+
+    uc=None
+    for row in cursor:
+        uc=row[0]
+
+    cursor.close()
+    grey_db.close()
+
+    if uc != None:
         valid_user="1"
     else:
         valid_user="0"

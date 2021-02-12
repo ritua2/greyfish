@@ -22,7 +22,7 @@ COPY traffic.py         /grey/traffic.py
 # Installs the necessary packages
 # Bash for convenience
 RUN apk update && apk add bash curl &&\
-    pip3 install gunicorn Flask influxdb redis requests &&\
+    pip3 install gunicorn Flask mysql-connector-python influxdb redis requests &&\
     chmod +x /grey/traffic.py /grey/API_Daemon.sh /grey/setup.sh
 
 

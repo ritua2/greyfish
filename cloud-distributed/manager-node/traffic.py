@@ -11,7 +11,7 @@ import os
 import redis
 
 import base_functions as bf
-
+import mysql.connector as mysql_con
 
 app = Flask(__name__)
 
@@ -52,9 +52,17 @@ def create_user():
 
     user_action = bf.idb_writer('greyfish')
 
-    # Stores usernames in Redis since this will be faster to check in the future
-    r_users = redis.Redis(host=URL_BASE, password=os.environ['REDIS_AUTH'], db=5)
-    if r_users.get(toktok) != None:
+    # Stores usernames in mysql since this will be faster to check in the future
+    grey_db = mysql_con.connect(host = os.environ["URL_BASE"] , port = 6603, user = os.environ["MYSQL_USER"] , password = os.environ["MYSQL_PASSWORD"], database = os.environ["MYSQL_DATABASE"])
+    cursor = grey_db.cursor(buffered=True)
+    cursor.execute("select * from user where name=%s",(toktok,))
+    uc=None
+    for row in cursor:
+        uc=row[0]
+    cursor.close()
+    grey_db.close()
+
+    if uc != None:
         return "User already has an account"
 
     try:
@@ -70,7 +78,12 @@ def create_user():
                                     }
                             }])
 
-        r_users.set(toktok, "Active")
+        grey_db = mysql_con.connect(host = os.environ["URL_BASE"] , port = 6603, user = os.environ["MYSQL_USER"] , password = os.environ["MYSQL_PASSWORD"], database = os.environ["MYSQL_DATABASE"])
+        cursor = grey_db.cursor(buffered=True)
+        cursor.execute("insert into user(name,max_data) values(%s,'100')",(toktok,))
+        grey_db.commit()
+        cursor.close()
+        grey_db.close()
 
         return "Greyfish cloud storage now available"
     except:
@@ -97,12 +110,20 @@ def delete_user():
 
     if not bf.valid_key(gkey, toktok):
         bf.failed_login(gkey, IP_addr, toktok, "delete-user")
-        return "INVALID key, cannot create a new user"
+        return "INVALID key, cannot delete user"
 
     user_action = bf.idb_writer('greyfish')
 
-    r_users = redis.Redis(host=URL_BASE, password=os.environ['REDIS_AUTH'], db=5)
-    if r_users.get(toktok) == None:
+    grey_db = mysql_con.connect(host = os.environ["URL_BASE"] , port = 6603, user = os.environ["MYSQL_USER"] , password = os.environ["MYSQL_PASSWORD"], database = os.environ["MYSQL_DATABASE"])
+    cursor = grey_db.cursor(buffered=True)
+    cursor.execute("select * from user where name=%s",(toktok,))
+    uc=None
+    for row in cursor:
+        uc=row[0]
+    cursor.close()
+    grey_db.close()
+
+    if uc == None:
         return "User does not exist"
 
     try:
@@ -118,7 +139,12 @@ def delete_user():
                             }
                     }])
 
-        r_users.delete(toktok)
+        grey_db = mysql_con.connect(host = os.environ["URL_BASE"] , port = 6603, user = os.environ["MYSQL_USER"] , password = os.environ["MYSQL_PASSWORD"], database = os.environ["MYSQL_DATABASE"])
+        cursor = grey_db.cursor(buffered=True)
+        cursor.execute("delete from user where name=%s",(toktok,))
+        grey_db.commit()
+        cursor.close()
+        grey_db.close()
 
         return "User files and data have been completely deleted"
     except:
@@ -151,13 +177,26 @@ def cluster_addme():
         bf.cluster_action_log(IP_addr, IP_addr, "Attempted to attach storage node with invalid orchestra key", orch_key)
         return "INVALID key, cannot attach to cluster"
 
-    r_nodes = redis.Redis(host=URL_BASE, password=os.environ['REDIS_AUTH'], db=6)
-    if r_nodes.exists(IP_addr):
+    grey_db = mysql_con.connect(host = os.environ["URL_BASE"] , port = 6603, user = os.environ["MYSQL_USER"] , password = os.environ["MYSQL_PASSWORD"], database = os.environ["MYSQL_DATABASE"])
+    cursor = grey_db.cursor(buffered=True)
+    cursor.execute("select * from node where ip=%s",(IP_addr,))
+    uc=None
+    for row in cursor:
+        uc=row[0]
+    cursor.close()
+    grey_db.close()
+
+    if uc != None:
         return "Node already attached"
 
     try:
         bf.cluster_action_log(IP_addr, IP_addr, "Attached new storage node", str(MAX_STORAGE)+" KB", NODE_KEY)
-        r_nodes.hmset(IP_addr, {"type":"storage", "max storage (KB)":MAX_STORAGE, "available storage (KB)":MAX_STORAGE, "NODE_KEY":NODE_KEY})
+        grey_db = mysql_con.connect(host = os.environ["URL_BASE"] , port = 6603, user = os.environ["MYSQL_USER"] , password = os.environ["MYSQL_PASSWORD"], database = os.environ["MYSQL_DATABASE"])
+        cursor = grey_db.cursor(buffered=True)
+        cursor.execute("insert into node(ip,total_space,free_space,node_key,status) values(%s,%s,%s,%s,'Available')",(IP_addr,MAX_STORAGE,MAX_STORAGE,NODE_KEY))
+        grey_db.commit()
+        cursor.close()
+        grey_db.close()
 
         return "New node attached correctly"
     except:
@@ -188,17 +227,30 @@ def removeme_as_is():
         bf.cluster_action_log(IP_addr, IP_addr, "Attempted to remove storage node as is with invalid orchestra key", orch_key)
         return "INVALID key, cannot remove storage node"
 
-    r_nodes = redis.Redis(host=URL_BASE, password=os.environ['REDIS_AUTH'], db=6)
-    if not r_nodes.exists(node_IP):
+    grey_db = mysql_con.connect(host = os.environ["URL_BASE"] , port = 6603, user = os.environ["MYSQL_USER"] , password = os.environ["MYSQL_PASSWORD"], database = os.environ["MYSQL_DATABASE"])
+    cursor = grey_db.cursor(buffered=True)
+    cursor.execute("select node_key from node where ip=%s",(node_IP,))
+    nd=None
+    for row in cursor:
+        nd=row[0]
+    cursor.close()
+    grey_db.close()
+    
+    if nd == None:
         return "Node is not attached to cluster"
 
     # Checks the node key
-    if r_nodes.hget(node_IP, "NODE_KEY").decode("UTF-8") != NODE_KEY:
+    if nd != NODE_KEY:
         return "INVALID, incorrect node key"
 
     try:
         bf.cluster_action_log(IP_addr, node_IP, "Removed storage node as is")
-        r_nodes.delete(node_IP)
+        grey_db = mysql_con.connect(host = os.environ["URL_BASE"] , port = 6603, user = os.environ["MYSQL_USER"] , password = os.environ["MYSQL_PASSWORD"], database = os.environ["MYSQL_DATABASE"])
+        cursor = grey_db.cursor(buffered=True)
+        cursor.execute("delete from node where ip=%s",(node_IP,))
+        grey_db.commit()
+        cursor.close()
+        grey_db.close()
 
         return "Node removed as is"
     except:
