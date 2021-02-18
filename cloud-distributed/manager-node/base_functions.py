@@ -75,6 +75,96 @@ def valid_orchestra_key(provided_key):
 
 
 
+# Checks if the user is valid
+def valid_user(unam):
+    grey_db = mysql_con.connect(host = os.environ["URL_BASE"] , port = 6603, user = os.environ["MYSQL_USER"] , password = os.environ["MYSQL_PASSWORD"], database = os.environ["MYSQL_DATABASE"])
+    cursor = grey_db.cursor(buffered=True)
+    cursor.execute("select * from user where name=%s",(unam,))
+
+    uc=None
+    for row in cursor:
+        uc=row[0]
+
+    cursor.close()
+    grey_db.close()
+    if uc != None:
+        return True
+    else:
+        return False
+
+# Get available VM with required space
+def get_available_vm(size):
+    grey_db = mysql_con.connect(host = os.environ["URL_BASE"] , port = 6603, user = os.environ["MYSQL_USER"] , password = os.environ["MYSQL_PASSWORD"], database = os.environ["MYSQL_DATABASE"])
+    cursor = grey_db.cursor(buffered=True)
+    cursor.execute("select ip, node_key from node where status='Available' and free_space > %s order by free_space desc",(size,))
+    ip=None
+    nkey=None
+    for row in cursor:
+        ip=row[0]
+        nkey=row[1]
+
+    cursor.close()
+    grey_db.close()
+    return ip,nkey
+
+# Log the location of the file for the user
+def update_node_files(toktok,new_name,vmip,DIR,action):
+    grey_db = mysql_con.connect(host = os.environ["URL_BASE"] , port = 6603, user = os.environ["MYSQL_USER"] , password = os.environ["MYSQL_PASSWORD"], database = os.environ["MYSQL_DATABASE"])
+    cursor = grey_db.cursor(buffered=True)
+    if action == "allocate":
+        cursor.execute("insert into file(id,user_id,ip,directory) values(%s,%s,%s,%s)",(new_name,toktok,vmip,DIR))
+    if action == "free":
+        cursor.execute("delete from file where id=%s and user_id=%s and ip=%s",(new_name,toktok,vmip))
+    grey_db.commit()
+    cursor.close()
+    grey_db.close()
+    
+# Update available space on the VM
+def update_node_space(vmip,nkey,filesize,action):
+    grey_db = mysql_con.connect(host = os.environ["URL_BASE"] , port = 6603, user = os.environ["MYSQL_USER"] , password = os.environ["MYSQL_PASSWORD"], database = os.environ["MYSQL_DATABASE"])
+    cursor = grey_db.cursor(buffered=True)
+    cursor.execute("select free_space from node where ip=%s",(vmip,))
+    available_space=None
+    for row in cursor:
+        available_space=int(row[0])
+
+    print("Available size",available_space)
+
+    if action == "allocate":
+        available_space = available_space-filesize    
+    if action == "free":
+        available_space = available_space+filesize
+    
+    print("Available size",available_space)
+
+    if available_space > 10:
+        cursor.execute("update node set free_space=%s,status='Available' where ip=%s and node_key=%s",(available_space,vmip,nkey))
+    else:
+        cursor.execute("update node set free_space=%s,status='Full' where ip=%s and node_key=%s",(available_space,vmip,nkey))
+   
+    grey_db.commit()
+    cursor.close()
+    grey_db.close()
+ 
+# Get VMcontaining the file 
+def get_file_vm(file,dir):
+    grey_db = mysql_con.connect(host = os.environ["URL_BASE"] , port = 6603, user = os.environ["MYSQL_USER"] , password = os.environ["MYSQL_PASSWORD"], database = os.environ["MYSQL_DATABASE"])
+    cursor = grey_db.cursor(buffered=True)
+    cursor.execute("select ip from file where id=%s and directory=%s",(file,dir))
+    ip=None
+    nkey=None
+    for row in cursor:
+        ip=row[0]
+    if ip is not None:
+        cursor.execute("select node_key from node where ip=%s",(ip,))
+        for row in cursor:
+            nkey=row[0]
+    cursor.close()
+    grey_db.close()
+    return ip,nkey
+
+
+
 # Creates a new key (new dir) in the dictionary
 # fpl (arr) (str): Contains the list of subsequent directories
 # exdic (dict)
@@ -166,27 +256,16 @@ def failed_login(logkey, IP, unam, action, due_to="incorrect_key"):
         password = os.environ['INFLUXDB_WRITE_USER_PASSWORD'], database = 'failed_login')
 
     # Finds if the user is valid or not
-    grey_db = mysql_con.connect(host = os.environ["URL_BASE"] , port = 6603, user = os.environ["MYSQL_USER"] , password = os.environ["MYSQL_PASSWORD"], database = os.environ["MYSQL_DATABASE"])
-    cursor = grey_db.cursor(buffered=True)
-    cursor.execute("select * from user where name=%s",(unam,))
-
-    uc=None
-    for row in cursor:
-        uc=row[0]
-
-    cursor.close()
-    grey_db.close()
-
-    if uc != None:
-        valid_user="1"
+    if valid_user(unam):
+        valid_usr="1"
     else:
-        valid_user="0"
+        valid_usr="0"
 
     FC.write_points([{
                     "measurement":"bad_credentials",
                     "tags":{
                             "id":unam,
-                            "valid_account":valid_user,
+                            "valid_account":valid_usr,
                             "action":action,
                             "reason":due_to
                             },

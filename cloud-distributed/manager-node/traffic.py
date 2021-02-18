@@ -9,17 +9,17 @@ Implements communication between end user calling greyfish and the other nodes
 from flask import Flask, request
 import os
 import redis
-
+import requests
 import base_functions as bf
 import mysql.connector as mysql_con
-
+from werkzeug.utils import secure_filename
 app = Flask(__name__)
 
 
 URL_BASE = os.environ["URL_BASE"]
 REDIS_AUTH = os.environ["REDIS_AUTH"]
 
-
+GREYFISH_FOLDER = "/greyfish/sandbox/"
 
 #################################
 # USER ACTIONS
@@ -52,7 +52,7 @@ def create_user():
 
     user_action = bf.idb_writer('greyfish')
 
-    # Stores usernames in mysql since this will be faster to check in the future
+    # Stores usernames in Redis since this will be faster to check in the future
     grey_db = mysql_con.connect(host = os.environ["URL_BASE"] , port = 6603, user = os.environ["MYSQL_USER"] , password = os.environ["MYSQL_PASSWORD"], database = os.environ["MYSQL_DATABASE"])
     cursor = grey_db.cursor(buffered=True)
     cursor.execute("select * from user where name=%s",(toktok,))
@@ -256,6 +256,112 @@ def removeme_as_is():
     except:
         return "INVALID, Server Error: Could not connect to database"
 
+#################################
+# FILE ACTIONS
+#################################
+
+# Uploads one file
+# Directories must be separated by ++
+
+@app.route("/grey/upload/<gkey>/<toktok>/<DIR>", methods=['POST'])
+def file_upload(toktok, gkey, DIR=''):
+
+    IP_addr = request.environ['REMOTE_ADDR']
+    if not bf.valid_key(gkey, toktok):
+        bf.failed_login(gkey, IP_addr, toktok, "upload-file")
+        return "INVALID key"
+
+    # user must be added to the database beforehand
+    if not bf.valid_user(toktok):
+        bf.failed_login(gkey, IP_addr, toktok, "upload-file")
+        return "INVALID user"
+
+    file = request.files['file']
+    fnam = file.filename
+
+    # Avoids empty filenames and those with commas
+    if fnam == '':
+       return 'INVALID, no file uploaded'
+
+    if ',' in fnam:
+       return "INVALID, no ',' allowed in filenames"
+   
+    new_name = secure_filename(fnam)
+    if not os.path.exists(GREYFISH_FOLDER+'DIR_'+str(toktok)+'/'+'/'.join(DIR.split('++'))):
+        os.makedirs(GREYFISH_FOLDER+'DIR_'+str(toktok)+'/'+'/'.join(DIR.split('++')))
+    file.save(os.path.join(GREYFISH_FOLDER+'DIR_'+str(toktok)+'/'+'/'.join(DIR.split('++')), new_name))
+    
+    # find VM that can fit the file
+    #request.files['file'].save('/tmp/foo')
+    filesize = os.stat(os.path.join(GREYFISH_FOLDER+'DIR_'+str(toktok)+'/'+'/'.join(DIR.split('++')), new_name)).st_size
+    print("filesize: ",filesize, " bytes")
+    vmip, nkey = bf.get_available_vm(filesize)
+    print("VM: ",vmip," ,key: ",nkey)
+
+    # upload the file to the first available VM
+    files = {'file': open(os.path.join(GREYFISH_FOLDER+'DIR_'+str(toktok)+'/'+'/'.join(DIR.split('++')), new_name), 'rb')}
+    req = requests.post("http://"+vmip+":3443"+"/grey/storage_upload/"+nkey+"/"+toktok+"/"+DIR, files=files)
+
+    # remove the file from local storage    
+    if os.path.exists(os.path.join(GREYFISH_FOLDER+'DIR_'+str(toktok)+'/'+'/'.join(DIR.split('++')), new_name)):
+        os.remove(os.path.join(GREYFISH_FOLDER+'DIR_'+str(toktok)+'/'+'/'.join(DIR.split('++')), new_name))
+    
+    if req.text == "INVALID node key":
+        return 'File not uploaded due to invalid node key'
+
+    action="allocate"
+    bf.update_node_files(toktok,new_name,vmip,DIR,action)
+    bf.update_node_space(vmip,nkey,filesize,action)
+    
+    return 'File succesfully uploaded to Greyfish'
+
+
+# Deletes a file already present in the user
+@app.route('/grey/delete_file/<gkey>/<toktok>/<FILE>/<DIR>')
+def delete_file(toktok, gkey, FILE, DIR=''):
+    
+    IP_addr = request.environ['REMOTE_ADDR']
+    if not bf.valid_key(gkey, toktok):
+        bf.failed_login(gkey, IP_addr, toktok, "delete-file")
+        return "INVALID key"
+
+    vmip,nkey = bf.get_file_vm(FILE,DIR)
+    if vmip == None or nkey == None:
+        return "Unable to locate the file"
+
+    req = requests.get("http://"+vmip+":3443"+"/grey/storage_delete_file/"+nkey+"/"+toktok+"/"+FILE+"/"+DIR)
+
+    if req.text=="INVALID node key" or req.text=="INVALID, User directory does not exist" or req.text == "File is not present in Greyfish":
+        return req.text
+    else:
+        fsize=int(req.text)
+        action="free"
+        bf.update_node_files(toktok,FILE,vmip,DIR,action)
+        bf.update_node_space(vmip,nkey,fsize,action)
+        bf.greyfish_log(IP_addr, toktok, "delete", "single file", '/'.join(DIR.split('++')), str(FILE))
+        return "File succesfully deleted from Greyfish storage"
+ 
+ 
+# Returns a file
+@app.route('/grey/grey/<gkey>/<toktok>/<FIL>/<DIR>')
+def grey_file(gkey, toktok, FIL, DIR=''):
+
+    IP_addr = request.environ['REMOTE_ADDR']
+    if not bf.valid_key(gkey, toktok):
+        bf.failed_login(gkey, IP_addr, toktok, "download-file")
+        return "INVALID key"
+    
+    vmip,nkey = bf.get_file_vm(FIL,DIR)
+    if vmip == None or nkey == None:
+        return "Unable to locate the file"
+    
+    req = requests.get("http://"+vmip+":3443"+"/grey/storage_grey/"+nkey+"/"+toktok+"/"+FIL+"/"+DIR)
+
+    if "INVALID" in req.text:
+        return req.text
+
+    bf.greyfish_log(IP_addr, toktok, "download", "single file", '/'.join(DIR.split('++')), FIL)
+    return req
 
 
 if __name__ == '__main__':
