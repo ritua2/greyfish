@@ -10,8 +10,8 @@ from flask import Flask, request
 import os, shutil
 import redis
 from werkzeug.utils import secure_filename
-#import base_functions as bf
-
+import base_functions as bf
+import tarfile
 
 app = Flask(__name__)
 GREYFISH_FOLDER = "/greyfish/sandbox/"
@@ -92,6 +92,72 @@ def grey_file(nkey, toktok, FIL, DIR=''):
 
     return send_file(USER_DIR+str(FIL), as_attachment=True)
 
+#################################
+# FOLDER ACTIONS
+#################################
+
+# Uploads one directory, it the directory already exists, then it deletes it and uploads the new contents
+# Must be a tar file
+@app.route("/grey/storage_upload_dir/<nkey>/<toktok>/<DIR>", methods=['POST'])
+def upload_dir(nkey, toktok, DIR):
+
+    if not nkey == os.environ['NODE_KEY']:
+        return "INVALID node key"
+
+    if str('DIR_'+toktok) not in os.listdir(GREYFISH_FOLDER):
+        os.makedirs(GREYFISH_FOLDER+'DIR_'+str(toktok))
+
+    file = request.files['file']
+    fnam = file.filename
+
+    # Avoids empty filenames and those with commas
+    if fnam == '':
+        return 'INVALID, no file uploaded'
+
+    if ',' in fnam:
+        return "INVALID, no ',' allowed in filenames"
+
+    # Untars the file, makes a directory if it does not exist
+    if ('.tar.gz' not in fnam) and ('.tgz' not in fnam):
+        return 'ERROR: Compression file not accepted, file must be .tgz or .tar.gz'
+
+    new_name = secure_filename(fnam)
+
+    try:
+        if os.path.exists(GREYFISH_FOLDER+'DIR_'+str(toktok)+'/'+'/'.join(DIR.split('++'))):
+            shutil.rmtree(GREYFISH_FOLDER+'DIR_'+str(toktok)+'/'+'/'.join(DIR.split('++')))
+
+        os.makedirs(GREYFISH_FOLDER+'DIR_'+str(toktok)+'/'+'/'.join(DIR.split('++')))
+        file.save(os.path.join(GREYFISH_FOLDER+'DIR_'+str(toktok)+'/'+'/'.join(DIR.split('++')), new_name))
+        tar = tarfile.open(GREYFISH_FOLDER+'DIR_'+str(toktok)+'/'+'/'.join(DIR.split('++'))+'/'+new_name)
+        tar.extractall(GREYFISH_FOLDER+'DIR_'+str(toktok)+'/'+'/'.join(DIR.split('++')))
+        tar.close()
+        os.remove(GREYFISH_FOLDER+'DIR_'+str(toktok)+'/'+'/'.join(DIR.split('++'))+'/'+new_name)
+        dirsize = bf.get_dir_size(GREYFISH_FOLDER+'DIR_'+str(toktok)+'/'+'/'.join(DIR.split('++'))+'/')
+        print('Directory succesfully uploaded to Greyfish')
+        return str(dirsize)
+    except:
+        return "Could not open tar file" 
+
+    #return 'Directory succesfully uploaded to Greyfish'
+
+# Deletes a directory
+@app.route("/grey/storage_delete_dir/<nkey>/<toktok>/<DIR>")
+def delete_dir(toktok, nkey, DIR):
+
+    IP_addr = request.environ['REMOTE_ADDR']
+    if not nkey == os.environ['NODE_KEY']:
+        return "INVALID node key"
+
+    dirsize=0
+    try:
+        dirsize = bf.get_dir_size(GREYFISH_FOLDER+'DIR_'+str(toktok)+'/'+'/'.join(DIR.split('++'))+'/')
+        shutil.rmtree(GREYFISH_FOLDER+'DIR_'+str(toktok)+'/'+'/'.join(DIR.split('++'))+'/')
+        print("Directory deleted")
+        return str(dirsize)
+
+    except:
+        return "User directory does not exist"
 
 
 if __name__ == '__main__':

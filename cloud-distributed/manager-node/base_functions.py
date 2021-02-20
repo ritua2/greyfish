@@ -119,6 +119,55 @@ def update_node_files(toktok,new_name,vmip,DIR,action):
     cursor.close()
     grey_db.close()
     
+# add each directory with the parents
+def add_dirs(DIR,uploaddir,vmip,toktok):
+    grey_db = mysql_con.connect(host = os.environ["URL_BASE"] , port = 6603, user = os.environ["MYSQL_USER"] , password = os.environ["MYSQL_PASSWORD"], database = os.environ["MYSQL_DATABASE"])
+    cursor = grey_db.cursor(buffered=True)
+    dirs=DIR.split('++')
+    #print(dirs)
+    for i in range(len(dirs)):
+        plus="++"
+        user=None
+        cursor.execute("select user_id from file where ip=%s and id=%s and directory=%s",(vmip,dirs[i],plus.join(dirs[:i])))
+        for row in cursor:
+            user=row[0]
+        if user == None:
+            cursor.execute("insert into file(id,user_id,ip,directory,is_dir) values(%s,%s,%s,%s,TRUE)",(dirs[i],toktok,vmip,plus.join(dirs[:i])))
+            grey_db.commit()
+        else:
+            continue
+        #print('Add: ',dirs[i]," and: ",plus.join(dirs[:i]))
+    user=None
+    cursor.execute("select user_id from file where ip=%s and id=%s and directory=%s",(vmip,uploaddir.split('.')[0],DIR))
+    for row in cursor:
+        user=row[0]
+    if user == None:
+        cursor.execute("insert into file(id,user_id,ip,directory,is_dir) values(%s,%s,%s,%s,TRUE)",(uploaddir.split('.')[0],toktok,vmip,DIR))
+        grey_db.commit()
+    cursor.close()
+    grey_db.close()
+    #print('Add: ',uploaddir.split('.')[0]," and: ",DIR)
+
+# remove each directory and sub-directories
+def delete_dirs(directory,vmip,toktok):
+    dir=directory.split('++')[-1]
+    grey_db = mysql_con.connect(host = os.environ["URL_BASE"] , port = 6603, user = os.environ["MYSQL_USER"] , password = os.environ["MYSQL_PASSWORD"], database = os.environ["MYSQL_DATABASE"])
+    cursor = grey_db.cursor(buffered=True)
+    cursor.execute("delete from file where id=%s and ip=%s and user_id=%s",(dir,vmip,toktok))
+    cursor.execute("delete from file where directory like %s and ip=%s and user_id=%s",("%"+dir+"%",vmip,toktok))
+    grey_db.commit()
+    cursor.close()
+    grey_db.close()
+
+
+
+# Log the location of the folders for the user
+def update_node_folders(toktok,new_name,vmip,DIR,action):
+    if action == "allocate":
+        add_dirs(DIR,new_name,vmip,toktok)
+    if action == "free":
+        delete_dirs(DIR,vmip,toktok)
+   
 # Update available space on the VM
 def update_node_space(vmip,nkey,filesize,action):
     grey_db = mysql_con.connect(host = os.environ["URL_BASE"] , port = 6603, user = os.environ["MYSQL_USER"] , password = os.environ["MYSQL_PASSWORD"], database = os.environ["MYSQL_DATABASE"])
@@ -146,7 +195,7 @@ def update_node_space(vmip,nkey,filesize,action):
     cursor.close()
     grey_db.close()
  
-# Get VMcontaining the file 
+# get VM containing the file 
 def get_file_vm(file,dir):
     grey_db = mysql_con.connect(host = os.environ["URL_BASE"] , port = 6603, user = os.environ["MYSQL_USER"] , password = os.environ["MYSQL_PASSWORD"], database = os.environ["MYSQL_DATABASE"])
     cursor = grey_db.cursor(buffered=True)
@@ -162,6 +211,36 @@ def get_file_vm(file,dir):
     cursor.close()
     grey_db.close()
     return ip,nkey
+
+# get VMs containing the folder 
+def get_folder_vm(dir):
+    grey_db = mysql_con.connect(host = os.environ["URL_BASE"] , port = 6603, user = os.environ["MYSQL_USER"] , password = os.environ["MYSQL_PASSWORD"], database = os.environ["MYSQL_DATABASE"])
+    cursor = grey_db.cursor(buffered=True)
+    cursor.execute("select ip from file where id=%s and directory=%s",(dir.split('++')[-1],'++'.join(dir.split('++')[:-1])))
+    ip=[]
+    nkey=[]
+    for row in cursor:
+        ip.append(row[0])
+    if len(ip)>0:
+        for vmip in ip:
+            cursor.execute("select node_key from node where ip=%s",(vmip,))
+            for row in cursor:
+                nkey.append(row[0])
+    cursor.close()
+    grey_db.close()
+    return ip,nkey
+
+# return size of the directory in bytes
+def get_dir_size(start_path = '.'):
+    total_size = 0
+    for dirpath, dirnames, filenames in os.walk(start_path):
+        for f in filenames:
+            fp = os.path.join(dirpath, f)
+            # skip if it is symbolic link
+            if not os.path.islink(fp):
+                total_size += os.path.getsize(fp)
+
+    return total_size
 
 
 

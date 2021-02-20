@@ -13,6 +13,7 @@ import requests
 import base_functions as bf
 import mysql.connector as mysql_con
 from werkzeug.utils import secure_filename
+import tarfile, shutil
 app = Flask(__name__)
 
 
@@ -363,6 +364,105 @@ def grey_file(gkey, toktok, FIL, DIR=''):
     bf.greyfish_log(IP_addr, toktok, "download", "single file", '/'.join(DIR.split('++')), FIL)
     return req
 
+#################################
+# FOLDER ACTIONS
+#################################
+
+# Uploads one directory, it the directory already exists, then it deletes it and uploads the new contents
+# Must be a tar file
+@app.route("/grey/upload_dir/<gkey>/<toktok>/<DIR>", methods=['POST'])
+def upload_dir(gkey, toktok, DIR):
+
+    IP_addr = request.environ['REMOTE_ADDR']
+    if not bf.valid_key(gkey, toktok):
+        bf.failed_login(gkey, IP_addr, toktok, "upload-dir")
+        return "INVALID key"
+
+    file = request.files['file']
+    fnam = file.filename
+
+    # Avoids empty filenames and those with commas
+    if fnam == '':
+        return 'INVALID, no file uploaded'
+
+    if ',' in fnam:
+        return "INVALID, no ',' allowed in filenames"
+
+    # Untars the file, makes a directory if it does not exist
+    if ('.tar.gz' not in fnam) and ('.tgz' not in fnam):
+        return 'ERROR: Compression file not accepted, file must be .tgz or .tar.gz'
+
+    new_name = secure_filename(fnam)
+    vmip=None
+    nkey=None
+    dirsize=None
+
+    try:
+        if os.path.exists(GREYFISH_FOLDER+'DIR_'+str(toktok)+'/'+'/'.join(DIR.split('++'))):
+            shutil.rmtree(GREYFISH_FOLDER+'DIR_'+str(toktok)+'/'+'/'.join(DIR.split('++')))
+
+        os.makedirs(GREYFISH_FOLDER+'DIR_'+str(toktok)+'/'+'/'.join(DIR.split('++')))
+        file.save(os.path.join(GREYFISH_FOLDER+'DIR_'+str(toktok)+'/'+'/'.join(DIR.split('++')), new_name))
+        tar = tarfile.open(GREYFISH_FOLDER+'DIR_'+str(toktok)+'/'+'/'.join(DIR.split('++'))+'/'+new_name)
+        tar.extractall(GREYFISH_FOLDER+'DIR_'+str(toktok)+'/'+'/'.join(DIR.split('++')))
+        tar.close()
+        dirsize = bf.get_dir_size(GREYFISH_FOLDER+'DIR_'+str(toktok)+'/'+'/'.join(DIR.split('++'))+'/'+new_name.split('.')[0])
+        print("Dirsize: ",dirsize)
+        vmip, nkey = bf.get_available_vm(dirsize)
+
+    except:
+        return "Could not open tar file" 
+
+    if vmip==None or nkey==None:
+        return "Can't find the VM to fit the directory"
+    
+    files = {'file': open(os.path.join(GREYFISH_FOLDER+'DIR_'+str(toktok)+'/'+'/'.join(DIR.split('++')), new_name), 'rb')}
+    req = requests.post("http://"+vmip+":3443"+"/grey/storage_upload_dir/"+nkey+"/"+toktok+"/"+DIR, files=files)
+
+    # remove the file from local storage    
+    if os.path.exists(os.path.join(GREYFISH_FOLDER+'DIR_'+str(toktok)+'/'+'/'.join(DIR.split('++')), new_name)):
+        os.remove(os.path.join(GREYFISH_FOLDER+'DIR_'+str(toktok)+'/'+'/'.join(DIR.split('++')), new_name))
+        shutil.rmtree(GREYFISH_FOLDER+'DIR_'+str(toktok)+'/'+'/'.join(DIR.split('++'))+'/'+new_name.split('.')[0])
+
+    print('Response from storage node: ',req.text)
+
+    if "INVALID" in req.text:
+        return req.text
+    dirsize=int(req.text)
+    action="allocate"
+    bf.update_node_folders(toktok,new_name,vmip,DIR,action)
+    bf.update_node_space(vmip,nkey,dirsize,action)
+
+    bf.greyfish_log(IP_addr, toktok, "upload", "dir", '/'.join(DIR.split('++')))
+    return 'Directory succesfully uploaded to Greyfish'
+
+
+# Deletes a directory
+@app.route("/grey/delete_dir/<gkey>/<toktok>/<DIR>")
+def delete_dir(toktok, gkey, DIR):
+
+    IP_addr = request.environ['REMOTE_ADDR']
+    if not bf.valid_key(gkey, toktok):
+        bf.failed_login(gkey, IP_addr, toktok, "delete-dir")
+        return "INVALID key"
+
+    #try:
+    vmip,nkey=bf.get_folder_vm(DIR)
+    fsize=0
+    for i in range(len(vmip)):
+        req = requests.get("http://"+vmip[i]+":3443"+"/grey/storage_delete_dir/"+nkey[i]+"/"+toktok+"/"+DIR)
+        if req.text=="INVALID node key" or req.text=="User directory does not exist":
+            continue
+        else:
+            fsize=int(req.text)
+            action="free"
+            bf.update_node_folders(toktok,'',vmip[i],DIR,action)
+            bf.update_node_space(vmip[i],nkey[i],fsize,action)
+    bf.greyfish_log(IP_addr, toktok, "delete", "single dir", '/'.join(DIR.split('++')))
+    return "Directory deleted"
+
+    #except:
+     #   return "User directory does not exist"
 
 if __name__ == '__main__':
    app.run()
