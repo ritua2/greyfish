@@ -6,7 +6,7 @@ Implements communication between end user calling greyfish and the other nodes
 """
 
 
-from flask import Flask, request
+from flask import Flask, request, send_file
 import os, shutil
 import redis
 from werkzeug.utils import secure_filename
@@ -19,7 +19,7 @@ GREYFISH_FOLDER = "/greyfish/sandbox/"
 
 URL_BASE = os.environ["URL_BASE"]
 #REDIS_AUTH = os.environ["REDIS_AUTH"]
-
+CURDIR = dir_path = os.path.dirname(os.path.realpath(__file__))
 
 
 #################################
@@ -145,7 +145,6 @@ def upload_dir(nkey, toktok, DIR):
 @app.route("/grey/storage_delete_dir/<nkey>/<toktok>/<DIR>")
 def delete_dir(toktok, nkey, DIR):
 
-    IP_addr = request.environ['REMOTE_ADDR']
     if not nkey == os.environ['NODE_KEY']:
         return "INVALID node key"
 
@@ -159,6 +158,32 @@ def delete_dir(toktok, nkey, DIR):
     except:
         return "User directory does not exist"
 
+# Downloads a directory
+# Equivalent to downloading the tar file, since they are both equivalent
+@app.route('/grey/storage_grey_dir/<nkey>/<toktok>/<DIR>')
+def grey_dir(nkey, toktok, DIR=''):
+
+    if not nkey == os.environ['NODE_KEY']:
+        return "INVALID node key"
+
+    if str('DIR_'+toktok) not in os.listdir(GREYFISH_FOLDER):
+        return 'INVALID, User directory does not exist'
+
+    USER_DIR = GREYFISH_FOLDER+'DIR_'+str(toktok)+'/'+'/'.join(DIR.split('++'))+'/'
+
+    if not os.path.exists(USER_DIR):
+        return 'INVALID, Directory not available'
+
+    os.chdir(USER_DIR)
+
+    tar = tarfile.open("summary.tar.gz", "w:gz")
+    for ff in os.listdir('.'):
+        tar.add(ff)
+    tar.close()
+
+    os.chdir(CURDIR)
+
+    return send_file(USER_DIR+"summary.tar.gz")
 
 if __name__ == '__main__':
    app.run()

@@ -6,7 +6,7 @@ Implements communication between end user calling greyfish and the other nodes
 """
 
 
-from flask import Flask, request
+from flask import Flask, request, send_file
 import os
 import redis
 import requests
@@ -21,7 +21,7 @@ URL_BASE = os.environ["URL_BASE"]
 REDIS_AUTH = os.environ["REDIS_AUTH"]
 
 GREYFISH_FOLDER = "/greyfish/sandbox/"
-
+CURDIR = dir_path = os.path.dirname(os.path.realpath(__file__))
 #################################
 # USER ACTIONS
 #################################
@@ -393,9 +393,7 @@ def upload_dir(gkey, toktok, DIR):
         return 'ERROR: Compression file not accepted, file must be .tgz or .tar.gz'
 
     new_name = secure_filename(fnam)
-    vmip=None
-    nkey=None
-    dirsize=None
+    vmip=nkey=dirsize=None
 
     try:
         if os.path.exists(GREYFISH_FOLDER+'DIR_'+str(toktok)+'/'+'/'.join(DIR.split('++'))):
@@ -407,7 +405,6 @@ def upload_dir(gkey, toktok, DIR):
         tar.extractall(GREYFISH_FOLDER+'DIR_'+str(toktok)+'/'+'/'.join(DIR.split('++')))
         tar.close()
         dirsize = bf.get_dir_size(GREYFISH_FOLDER+'DIR_'+str(toktok)+'/'+'/'.join(DIR.split('++'))+'/'+new_name.split('.')[0])
-        print("Dirsize: ",dirsize)
         vmip, nkey = bf.get_available_vm(dirsize)
 
     except:
@@ -424,7 +421,6 @@ def upload_dir(gkey, toktok, DIR):
         os.remove(os.path.join(GREYFISH_FOLDER+'DIR_'+str(toktok)+'/'+'/'.join(DIR.split('++')), new_name))
         shutil.rmtree(GREYFISH_FOLDER+'DIR_'+str(toktok)+'/'+'/'.join(DIR.split('++'))+'/'+new_name.split('.')[0])
 
-    print('Response from storage node: ',req.text)
 
     if "INVALID" in req.text:
         return req.text
@@ -446,7 +442,6 @@ def delete_dir(toktok, gkey, DIR):
         bf.failed_login(gkey, IP_addr, toktok, "delete-dir")
         return "INVALID key"
 
-    #try:
     vmip,nkey=bf.get_folder_vm(DIR)
     fsize=0
     for i in range(len(vmip)):
@@ -461,8 +456,47 @@ def delete_dir(toktok, gkey, DIR):
     bf.greyfish_log(IP_addr, toktok, "delete", "single dir", '/'.join(DIR.split('++')))
     return "Directory deleted"
 
-    #except:
-     #   return "User directory does not exist"
+# Downloads a directory
+# Equivalent to downloading the tar file, since they are both equivalent
+@app.route('/grey/grey_dir/<gkey>/<toktok>/<DIR>')
+def grey_dir(gkey, toktok, DIR=''):
+
+    IP_addr = request.environ['REMOTE_ADDR']
+    if not bf.valid_key(gkey, toktok):
+        bf.failed_login(gkey, IP_addr, toktok, "download-dir")
+        return "INVALID key"
+
+    USER_DIR=GREYFISH_FOLDER+'DIR_'+str(toktok)+'/download/'
+    if os.path.exists(USER_DIR):
+        shutil.rmtree(USER_DIR)
+    os.makedirs(USER_DIR)
+    vmip,nkey=bf.get_folder_vm(DIR)
+    for i in range(len(vmip)):
+        req = requests.get("http://"+vmip[i]+":3443"+"/grey/storage_grey_dir/"+nkey[i]+"/"+toktok+"/"+DIR,stream=True)
+        if "INVALID" in req.text:
+            continue
+        else:
+            if os.path.exists(USER_DIR+'summary.tar.gz'):
+                os.remove(USER_DIR+'summary.tar.gz')
+
+            with open(USER_DIR+'summary.tar.gz','wb') as fd:
+                for chunk in req.iter_content(chunk_size=128):
+                    fd.write(chunk)
+
+            with tarfile.open(USER_DIR+'summary.tar.gz',"r:gz") as tf:
+                tf.extractall(USER_DIR)
+            os.remove(USER_DIR+'summary.tar.gz')
+
+    bf.greyfish_log(IP_addr, toktok, "download", "dir", '/'.join(DIR.split('++')))
+
+    os.chdir(USER_DIR)
+    tar = tarfile.open("summary.tar.gz", "w:gz")
+    for ff in os.listdir('.'):
+        tar.add(ff)
+    tar.close()
+    os.chdir(CURDIR)
+
+    return send_file(USER_DIR+"summary.tar.gz")
 
 if __name__ == '__main__':
    app.run()
