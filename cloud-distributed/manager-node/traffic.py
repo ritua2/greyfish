@@ -295,9 +295,11 @@ def file_upload(toktok, gkey, DIR=''):
     # find VM that can fit the file
     #request.files['file'].save('/tmp/foo')
     filesize = os.stat(os.path.join(GREYFISH_FOLDER+'DIR_'+str(toktok)+'/'+'/'.join(DIR.split('++')), new_name)).st_size
-    print("filesize: ",filesize, " bytes")
+    #print("filesize: ",filesize, " bytes")
     vmip, nkey = bf.get_available_vm(filesize)
-    print("VM: ",vmip," ,key: ",nkey)
+    #print("VM: ",vmip," ,key: ",nkey)
+    if vmip==None or nkey==None:
+        return "Couldn't find any VM which can fit the file to be uploaded"
 
     # upload the file to the first available VM
     files = {'file': open(os.path.join(GREYFISH_FOLDER+'DIR_'+str(toktok)+'/'+'/'.join(DIR.split('++')), new_name), 'rb')}

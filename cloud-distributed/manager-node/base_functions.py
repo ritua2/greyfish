@@ -106,21 +106,9 @@ def get_available_vm(size):
     cursor.close()
     grey_db.close()
     return ip,nkey
-
-# Log the location of the file for the user
-def update_node_files(toktok,new_name,vmip,DIR,action):
-    grey_db = mysql_con.connect(host = os.environ["URL_BASE"] , port = 6603, user = os.environ["MYSQL_USER"] , password = os.environ["MYSQL_PASSWORD"], database = os.environ["MYSQL_DATABASE"])
-    cursor = grey_db.cursor(buffered=True)
-    if action == "allocate":
-        cursor.execute("insert into file(id,user_id,ip,directory) values(%s,%s,%s,%s)",(new_name,toktok,vmip,DIR))
-    if action == "free":
-        cursor.execute("delete from file where id=%s and user_id=%s and ip=%s",(new_name,toktok,vmip))
-    grey_db.commit()
-    cursor.close()
-    grey_db.close()
-    
+   
 # add each directory with the parents
-def add_dirs(DIR,uploaddir,vmip,toktok):
+def add_dirs(DIR,uploaddir,vmip,toktok,is_file):
     grey_db = mysql_con.connect(host = os.environ["URL_BASE"] , port = 6603, user = os.environ["MYSQL_USER"] , password = os.environ["MYSQL_PASSWORD"], database = os.environ["MYSQL_DATABASE"])
     cursor = grey_db.cursor(buffered=True)
     dirs=DIR.split('++')
@@ -138,12 +126,20 @@ def add_dirs(DIR,uploaddir,vmip,toktok):
             continue
         #print('Add: ',dirs[i]," and: ",plus.join(dirs[:i]))
     user=None
-    cursor.execute("select user_id from file where ip=%s and id=%s and directory=%s",(vmip,uploaddir.split('.')[0],DIR))
-    for row in cursor:
-        user=row[0]
-    if user == None:
-        cursor.execute("insert into file(id,user_id,ip,directory,is_dir) values(%s,%s,%s,%s,TRUE)",(uploaddir.split('.')[0],toktok,vmip,DIR))
-        grey_db.commit()
+    if is_file:
+        cursor.execute("select user_id from file where ip=%s and id=%s and directory=%s",(vmip,uploaddir,DIR))
+        for row in cursor:
+            user=row[0]
+        if user == None:
+            cursor.execute("insert into file(id,user_id,ip,directory) values(%s,%s,%s,%s)",(uploaddir,toktok,vmip,DIR))
+            grey_db.commit()
+    else:
+        cursor.execute("select user_id from file where ip=%s and id=%s and directory=%s",(vmip,uploaddir.split('.')[0],DIR))
+        for row in cursor:
+            user=row[0]
+        if user == None:
+            cursor.execute("insert into file(id,user_id,ip,directory,is_dir) values(%s,%s,%s,%s,TRUE)",(uploaddir.split('.')[0],toktok,vmip,DIR))
+            grey_db.commit()
     cursor.close()
     grey_db.close()
     #print('Add: ',uploaddir.split('.')[0]," and: ",DIR)
@@ -160,6 +156,17 @@ def delete_dirs(directory,vmip,toktok):
     grey_db.close()
 
 
+# Log the location of the file for the user
+def update_node_files(toktok,new_name,vmip,DIR,action):
+    grey_db = mysql_con.connect(host = os.environ["URL_BASE"] , port = 6603, user = os.environ["MYSQL_USER"] , password = os.environ["MYSQL_PASSWORD"], database = os.environ["MYSQL_DATABASE"])
+    cursor = grey_db.cursor(buffered=True)
+    if action == "allocate":
+        add_dirs(DIR,new_name,vmip,toktok,True)
+    if action == "free":
+        cursor.execute("delete from file where id=%s and user_id=%s and ip=%s",(new_name,toktok,vmip))
+    grey_db.commit()
+    cursor.close()
+    grey_db.close()
 
 # Log the location of the folders for the user
 def update_node_folders(toktok,new_name,vmip,DIR,action):
