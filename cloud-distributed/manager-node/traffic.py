@@ -14,6 +14,7 @@ import base_functions as bf
 import mysql.connector as mysql_con
 from werkzeug.utils import secure_filename
 import tarfile, shutil
+import checksums as ch
 app = Flask(__name__)
 
 
@@ -362,9 +363,41 @@ def grey_file(gkey, toktok, FIL, DIR=''):
 
     if "INVALID" in req.text:
         return req.text
+    
+    USER_DIR=GREYFISH_FOLDER+'DIR_'+str(toktok)+'/download/'
+    if not os.path.exists(USER_DIR):
+        os.makedirs(USER_DIR)
+
+    open(USER_DIR+FIL,'wb').write(req.content)
+
+    os.chdir(USER_DIR)
+    checksum = ch.sha256_checksum(FIL)
+    print("file checksum: ", checksum)
+
+    if not bf.verify_checksum(checksum, FIL, DIR, toktok, False):
+        print('checksum do not match')
+        #return "The Folder has been corrupted"
+    else:
+        print('checksum matches')
+        
+    if os.path.exists(USER_DIR+'summary.tar.gz'):
+        os.remove(USER_DIR+'summary.tar.gz')
+
+    checksumfile = open("checksum.txt","w")
+    checksumfile.write(checksum)
+    checksumfile.close()
+    
+    tar = tarfile.open("summary.tar.gz", "w:gz")
+    to_be_tarred = [x for x in os.listdir('.') if x != "summary.tar.gz"]
+    for ff in to_be_tarred:
+        tar.add(ff)
+        os.remove(ff)
+    tar.close()
+
+    os.chdir(CURDIR)
 
     bf.greyfish_log(IP_addr, toktok, "download", "single file", '/'.join(DIR.split('++')), FIL)
-    return req
+    return send_file(USER_DIR+"summary.tar.gz")
 
 #################################
 # FOLDER ACTIONS
@@ -469,6 +502,69 @@ def grey_dir(gkey, toktok, DIR=''):
         return "INVALID key"
 
     USER_DIR=GREYFISH_FOLDER+'DIR_'+str(toktok)+'/download/'
+    if not os.path.exists(USER_DIR):
+        #shutil.rmtree(USER_DIR)
+        os.makedirs(USER_DIR)
+
+    vmip,nkey=bf.get_folder_vm(DIR)
+    for i in range(len(vmip)):
+        req = requests.get("http://"+vmip[i]+":3443"+"/grey/storage_grey_dir/"+nkey[i]+"/"+toktok+"/"+DIR,stream=True)
+        if "INVALID" in req.text:
+            continue
+        else:
+            if os.path.exists(USER_DIR+'summary.tar.gz'):
+                os.remove(USER_DIR+'summary.tar.gz')
+
+            with open(USER_DIR+'summary.tar.gz','wb') as fd:
+                for chunk in req.iter_content(chunk_size=128):
+                    fd.write(chunk)
+
+            with tarfile.open(USER_DIR+'summary.tar.gz',"r:gz") as tf:
+                tf.extractall(USER_DIR)
+            os.remove(USER_DIR+'summary.tar.gz')
+
+
+    checksum = ch.sha256_checksum_dir(USER_DIR)
+    #print("checksum: ", checksum)
+
+    if not bf.verify_checksum(checksum, DIR.split('++')[-1], '++'.join(DIR.split('++')[:-1]), toktok, True):
+        #print('checksum do not match')
+        return "The Folder has been corrupted"
+    #else:
+    #    print('checksum matches')
+
+    os.chdir(USER_DIR)
+    checksumfile = open("checksum.txt","w")
+    checksumfile.write(checksum)
+    checksumfile.close()
+    tar = tarfile.open("summary.tar.gz", "w:gz")
+    to_be_tarred = [x for x in os.listdir('.') if x != "summary.tar.gz"]
+    for ff in to_be_tarred:
+        tar.add(ff)
+        os.remove(ff)
+    tar.close()
+
+    os.chdir(CURDIR)
+    
+    bf.greyfish_log(IP_addr, toktok, "download", "dir", '/'.join(DIR.split('++')))
+
+    return send_file(USER_DIR+"summary.tar.gz")
+
+#################################
+# CHECKSUM ACTIONS
+#################################
+
+# Downloads a directory with a checksum as a tar file
+# The file is name after the first 8 characters of the checksum
+# The tar file is moved onto a temporary directory afterwards, where it can be deleted if the checksum is correct
+@app.route('/grey/download_checksum_dir/<gkey>/<toktok>/<DIR>')
+def download_checksum_dir(gkey, toktok, DIR=''):
+    IP_addr = request.environ['REMOTE_ADDR']
+    if not bf.valid_key(gkey, toktok):
+        bf.failed_login(gkey, IP_addr, toktok, "download-dir")
+        return "INVALID key"
+
+    USER_DIR=GREYFISH_FOLDER+'DIR_'+str(toktok)+'/download/'
     if os.path.exists(USER_DIR):
         shutil.rmtree(USER_DIR)
     os.makedirs(USER_DIR)
@@ -496,9 +592,36 @@ def grey_dir(gkey, toktok, DIR=''):
     for ff in os.listdir('.'):
         tar.add(ff)
     tar.close()
+
+    checksum8_name = ch.sha256_checksum("summary.tar.gz")[:8]+".tar.gz"
+    checksum_dir = GREYFISH_FOLDER+'DIR_'+str(toktok)+'/checksum_files/'
+
+    # If the temporary directory does not exist, it creates it
+    if not os.path.isdir(checksum_dir):
+        os.makedirs(checksum_dir)
+
+    shutil.move("summary.tar.gz", checksum_dir + checksum8_name)
     os.chdir(CURDIR)
 
-    return send_file(USER_DIR+"summary.tar.gz")
+    bf.greyfish_log(IP_addr, toktok, "download checksum", "dir", '/'.join(DIR.split('++')))
+    return send_file(checksum_dir + checksum8_name, as_attachment=True)
 
+
+# Deletes a checksum file given its file name
+@app.route('/grey/delete_checksum_file/<gkey>/<toktok>/<FILE>')
+def delete_checksum_file(toktok, gkey, FILE):
+
+    IP_addr = request.environ['REMOTE_ADDR']
+    checksum_dir = GREYFISH_FOLDER+'DIR_'+str(toktok)+'/checksum_files/'
+    if not bf.valid_key(gkey, toktok):
+        bf.failed_login(gkey, IP_addr, toktok, "delete-file")
+        return "INVALID key"
+
+    if not os.path.exists(checksum_dir+FILE):
+        return 'Checksum file is not present in Greyfish'
+
+    os.remove(checksum_dir+FILE)
+    bf.greyfish_log(IP_addr, toktok, "delete", "checksum file", FILE)
+    return 'Checksum file succesfully deleted from Greyfish storage'
 if __name__ == '__main__':
    app.run()

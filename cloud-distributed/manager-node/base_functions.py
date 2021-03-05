@@ -237,6 +237,21 @@ def get_folder_vm(dir):
     grey_db.close()
     return ip,nkey
 
+# Verify checksum in db
+def verify_checksum(checksum,target,DIR,userid,is_dir):
+    grey_db = mysql_con.connect(host = os.environ["URL_BASE"] , port = 6603, user = os.environ["MYSQL_USER"] , password = os.environ["MYSQL_PASSWORD"], database = os.environ["MYSQL_DATABASE"])
+    cursor = grey_db.cursor(buffered=True)
+    cursor.execute("select checksum from file where id=%s and directory=%s and user_id=%s and is_dir=%s",(target,DIR,userid,is_dir))
+    checksum_db=None
+    for row in cursor:
+        checksum_db=row[0]
+    cursor.close()
+    grey_db.close()
+    print('db checksum: ',checksum_db)
+    if checksum_db == checksum:
+        return True
+    return False
+
 # return size of the directory in bytes
 def get_dir_size(start_path = '.'):
     total_size = 0
