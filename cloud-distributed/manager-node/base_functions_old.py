@@ -106,6 +106,67 @@ def get_available_vms(size):
     grey_db.close()
     return ip,nkey
 
+# add each directory with the parents
+def add_dirs(DIR,uploaddir,vmip,toktok,is_file):
+    UPLOAD_DIR = GREYFISH_FOLDER+'DIR_'+str(toktok)+'/upload'
+    grey_db = mysql_con.connect(host = os.environ["URL_BASE"] , port = 6603, user = os.environ["MYSQL_USER"] , password = os.environ["MYSQL_PASSWORD"], database = os.environ["MYSQL_DATABASE"])
+    cursor = grey_db.cursor(buffered=True)
+    dirs=DIR.split('++')
+    #print(dirs)
+    for i in range(len(dirs)):
+        plus="++"
+        user=None
+        cursor.execute("select user_id from file where ip=%s and id=%s and directory=%s",(vmip,dirs[i],plus.join(dirs[:i])))
+        for row in cursor:
+            user=row[0]
+        if user == None:
+            cursor.execute("insert into file(id,user_id,ip,directory,is_dir) values(%s,%s,%s,%s,TRUE)",(dirs[i],toktok,vmip,plus.join(dirs[:i])))
+            grey_db.commit()
+        else:
+            continue
+        #print('Add: ',dirs[i]," and: ",plus.join(dirs[:i]))
+    user=None
+    if is_file:
+        cursor.execute("select user_id from file where ip=%s and id=%s and directory=%s",(vmip,uploaddir,DIR))
+        for row in cursor:
+            user=row[0]
+        if user == None:
+            cursor.execute("insert into file(id,user_id,ip,directory) values(%s,%s,%s,%s)",(uploaddir,toktok,vmip,DIR))
+            grey_db.commit()
+    else:
+        cursor.execute("select user_id from file where ip=%s and id=%s and directory=%s",(vmip,uploaddir.split('.')[0],DIR))
+        for row in cursor:
+            user=row[0]
+        if user == None:
+            cursor.execute("insert into file(id,user_id,ip,directory,is_dir) values(%s,%s,%s,%s,TRUE)",(uploaddir.split('.')[0],toktok,vmip,DIR))
+            grey_db.commit()
+    cursor.close()
+    grey_db.close()
+    #print('Add: ',uploaddir.split('.')[0]," and: ",DIR)
+
+# remove each directory and sub-directories
+def delete_dirs(directory,vmip,toktok):
+    #dir=directory.split('++')[-1]
+    grey_db = mysql_con.connect(host = os.environ["URL_BASE"] , port = 6603, user = os.environ["MYSQL_USER"] , password = os.environ["MYSQL_PASSWORD"], database = os.environ["MYSQL_DATABASE"])
+    cursor = grey_db.cursor(buffered=True)
+    #cursor.execute("delete from file where id=%s and ip=%s and user_id=%s",(dir,vmip,toktok))
+    cursor.execute("delete from file where directory like %s and ip=%s and user_id=%s",(directory+"%",vmip,toktok))
+    grey_db.commit()
+    cursor.close()
+    grey_db.close()
+
+# Log the location of the file for the user
+def update_node_files(toktok,new_name,vmip,DIR,action):
+    grey_db = mysql_con.connect(host = os.environ["URL_BASE"] , port = 6603, user = os.environ["MYSQL_USER"] , password = os.environ["MYSQL_PASSWORD"], database = os.environ["MYSQL_DATABASE"])
+    cursor = grey_db.cursor(buffered=True)
+    if action == "allocate":
+        add_dirs(DIR,new_name,vmip,toktok,True)
+    if action == "free":
+        cursor.execute("delete from file where id=%s and user_id=%s and ip=%s",(new_name,toktok,vmip))
+    grey_db.commit()
+    cursor.close()
+    grey_db.close()
+
 # Update file checksum
 def update_file_checksum(toktok,new_name,vmip,DIR,checksum):
     grey_db = mysql_con.connect(host = os.environ["URL_BASE"] , port = 6603, user = os.environ["MYSQL_USER"] , password = os.environ["MYSQL_PASSWORD"], database = os.environ["MYSQL_DATABASE"])
@@ -120,6 +181,42 @@ def update_folder_checksum(toktok,vmip,DIR,checksum):
     grey_db = mysql_con.connect(host = os.environ["URL_BASE"] , port = 6603, user = os.environ["MYSQL_USER"] , password = os.environ["MYSQL_PASSWORD"], database = os.environ["MYSQL_DATABASE"])
     cursor = grey_db.cursor(buffered=True)
     cursor.execute("update file set checksum=%s where directory=%s and user_id=%s",(checksum,DIR,toktok))
+    grey_db.commit()
+    cursor.close()
+    grey_db.close()
+
+
+
+# Log the location of the folders for the user
+def update_node_folders(toktok,new_name,vmip,DIR,action):
+    if action == "allocate":
+        add_dirs(DIR,new_name,vmip,toktok)
+    if action == "free":
+        delete_dirs(DIR,vmip,toktok)
+   
+# Update available space on the VM
+def update_node_space(vmip,nkey,filesize,action):
+    grey_db = mysql_con.connect(host = os.environ["URL_BASE"] , port = 6603, user = os.environ["MYSQL_USER"] , password = os.environ["MYSQL_PASSWORD"], database = os.environ["MYSQL_DATABASE"])
+    cursor = grey_db.cursor(buffered=True)
+    cursor.execute("select free_space from node where ip=%s",(vmip,))
+    available_space=None
+    for row in cursor:
+        available_space=int(row[0])
+
+    print("Available size",available_space)
+
+    if action == "allocate":
+        available_space = available_space-filesize    
+    if action == "free":
+        available_space = available_space+filesize
+    
+    print("Available size",available_space)
+
+    if available_space > 10:
+        cursor.execute("update node set free_space=%s,status='Available' where ip=%s and node_key=%s",(available_space,vmip,nkey))
+    else:
+        cursor.execute("update node set free_space=%s,status='Full' where ip=%s and node_key=%s",(available_space,vmip,nkey))
+   
     grey_db.commit()
     cursor.close()
     grey_db.close()
@@ -159,16 +256,45 @@ def get_folder_vm(userid,dir):
     grey_db.close()
     return ip,nkey
 
+# Verify checksum in db
+def verify_checksum(checksum,target,DIR,userid,is_dir):
+    grey_db = mysql_con.connect(host = os.environ["URL_BASE"] , port = 6603, user = os.environ["MYSQL_USER"] , password = os.environ["MYSQL_PASSWORD"], database = os.environ["MYSQL_DATABASE"])
+    cursor = grey_db.cursor(buffered=True)
+    cursor.execute("select checksum from file where id=%s and directory=%s and user_id=%s and is_dir=%s",(target,DIR,userid,is_dir))
+    checksum_db=None
+    for row in cursor:
+        checksum_db=row[0]
+    cursor.close()
+    grey_db.close()
+    print('db checksum: ',checksum_db)
+    if checksum_db == checksum:
+        return True
+    return False
+
+# check if directory exist on any VM 
+def directory_vm(userid,DIR):
+    grey_db = mysql_con.connect(host = os.environ["URL_BASE"] , port = 6603, user = os.environ["MYSQL_USER"] , password = os.environ["MYSQL_PASSWORD"], database = os.environ["MYSQL_DATABASE"])
+    cursor = grey_db.cursor(buffered=True)
+    cursor.execute("select ip from file where directory=%s and user_id=%s",(DIR,userid))
+    ip=[]
+    for row in cursor:
+        ip.append(row[0])
+    cursor.close()
+    grey_db.close()
+    return ip
+
+
 # return size of the directory in bytes
 def get_dir_size(start_path = '.'):
     total_size = 0
     for dirpath, dirnames, filenames in os.walk(start_path):
         for f in filenames:
             fp = os.path.join(dirpath, f)
+            # skip if it is symbolic link
             if not os.path.islink(fp):
                 total_size += os.path.getsize(fp)
-    return total_size
 
+    return total_size
 
 
 # Creates a new key (new dir) in the dictionary
@@ -262,6 +388,8 @@ def failed_login(logkey, IP, unam, action, due_to="incorrect_key"):
         password = os.environ['INFLUXDB_WRITE_USER_PASSWORD'], database = 'failed_login')
 
     # Finds if the user is valid or not
+    #r_users = redis.Redis(host=os.environ['URL_BASE'], password=os.environ['REDIS_AUTH'], db=5)
+    #if r_users.exists(unam):
     if valid_user(unam):
         valid_usr="1"
     else:

@@ -115,7 +115,6 @@ def delete_user():
         return "INVALID key, cannot delete user"
 
     user_action = bf.idb_writer('greyfish')
-
     grey_db = mysql_con.connect(host = os.environ["URL_BASE"] , port = 6603, user = os.environ["MYSQL_USER"] , password = os.environ["MYSQL_PASSWORD"], database = os.environ["MYSQL_DATABASE"])
     cursor = grey_db.cursor(buffered=True)
     cursor.execute("select * from user where name=%s",(toktok,))
@@ -140,7 +139,6 @@ def delete_user():
                             "client-IP":IP_addr
                             }
                     }])
-
         grey_db = mysql_con.connect(host = os.environ["URL_BASE"] , port = 6603, user = os.environ["MYSQL_USER"] , password = os.environ["MYSQL_PASSWORD"], database = os.environ["MYSQL_DATABASE"])
         cursor = grey_db.cursor(buffered=True)
         cursor.execute("delete from user where name=%s",(toktok,))
@@ -158,6 +156,12 @@ def delete_user():
 # CLUSTER ACTIONS
 #################################
 
+# returns ip_address of the instance
+@app.route("/grey/cluster/whoami", methods=['GET'])
+def whoami():
+    IP_addr = request.environ['REMOTE_ADDR']
+    return IP_addr
+    
 # Adds a new greyfish storage node to the cluster
 @app.route("/grey/cluster/addme", methods=['POST'])
 def cluster_addme():
@@ -199,7 +203,6 @@ def cluster_addme():
         grey_db.commit()
         cursor.close()
         grey_db.close()
-
         return "New node attached correctly"
     except:
         return "INVALID, Server Error: Could not connect to database"
@@ -228,7 +231,7 @@ def removeme_as_is():
     if not bf.valid_orchestra_key(orch_key):
         bf.cluster_action_log(IP_addr, IP_addr, "Attempted to remove storage node as is with invalid orchestra key", orch_key)
         return "INVALID key, cannot remove storage node"
-
+        
     grey_db = mysql_con.connect(host = os.environ["URL_BASE"] , port = 6603, user = os.environ["MYSQL_USER"] , password = os.environ["MYSQL_PASSWORD"], database = os.environ["MYSQL_DATABASE"])
     cursor = grey_db.cursor(buffered=True)
     cursor.execute("select node_key from node where ip=%s",(node_IP,))
@@ -237,6 +240,7 @@ def removeme_as_is():
         nd=row[0]
     cursor.close()
     grey_db.close()
+    
     
     if nd == None:
         return "Node is not attached to cluster"
@@ -265,6 +269,7 @@ def removeme_as_is():
 # Uploads one file
 # Directories must be separated by ++
 
+@app.route("/grey/upload/<gkey>/<toktok>", methods=['POST'], defaults={'DIR':''})
 @app.route("/grey/upload/<gkey>/<toktok>/<DIR>", methods=['POST'])
 def file_upload(toktok, gkey, DIR=''):
 
@@ -278,49 +283,66 @@ def file_upload(toktok, gkey, DIR=''):
         bf.failed_login(gkey, IP_addr, toktok, "upload-file")
         return "INVALID user"
 
+    dir_vm,_=bf.get_folder_vm(toktok,DIR)
+    if not len(dir_vm):
+        return "INVALID Directory does not exist"
+
     file = request.files['file']
     fnam = file.filename
-
     # Avoids empty filenames and those with commas
     if fnam == '':
        return 'INVALID, no file uploaded'
-
     if ',' in fnam:
        return "INVALID, no ',' allowed in filenames"
-   
+
+    #save file locally
+    UPLOAD_DIR = GREYFISH_FOLDER+'DIR_'+str(toktok)+'/upload'   
+    if os.path.exists(UPLOAD_DIR):
+        shutil.rmtree(UPLOAD_DIR)
+    os.makedirs(UPLOAD_DIR)
     new_name = secure_filename(fnam)
-    if not os.path.exists(GREYFISH_FOLDER+'DIR_'+str(toktok)+'/'+'/'.join(DIR.split('++'))):
-        os.makedirs(GREYFISH_FOLDER+'DIR_'+str(toktok)+'/'+'/'.join(DIR.split('++')))
-    file.save(os.path.join(GREYFISH_FOLDER+'DIR_'+str(toktok)+'/'+'/'.join(DIR.split('++')), new_name))
+    file.save(os.path.join(UPLOAD_DIR, new_name))
     
     # find VM that can fit the file
-    #request.files['file'].save('/tmp/foo')
-    filesize = os.stat(os.path.join(GREYFISH_FOLDER+'DIR_'+str(toktok)+'/'+'/'.join(DIR.split('++')), new_name)).st_size
-    #print("filesize: ",filesize, " bytes")
-    vmip, nkey = bf.get_available_vm(filesize)
-    #print("VM: ",vmip," ,key: ",nkey)
-    if vmip==None or nkey==None:
+    filesize = os.stat(os.path.join(UPLOAD_DIR, new_name)).st_size
+    vmip, nkey = bf.get_available_vms(filesize)
+    if len(vmip)==0 or len(nkey)==0:
+        os.remove(os.path.join(UPLOAD_DIR, new_name))
         return "Couldn't find any VM which can fit the file to be uploaded"
 
+    ip=key=None
+    for i in range(len(vmip)):
+        if vmip[i] in dir_vm:
+            ip=vmip[i]
+            key=nkey[i]
+            break 
+        else:
+            continue
+    if ip==None or key==None:
+        ip=vmip[0]
+        key=nkey[0]
+
+
     # upload the file to the first available VM
-    files = {'file': open(os.path.join(GREYFISH_FOLDER+'DIR_'+str(toktok)+'/'+'/'.join(DIR.split('++')), new_name), 'rb')}
-    req = requests.post("http://"+vmip+":3443"+"/grey/storage_upload/"+nkey+"/"+toktok+"/"+DIR, files=files)
-
+    files = {'file': open(os.path.join(UPLOAD_DIR, new_name), 'rb')}
+    if DIR=='':
+        req = requests.post("http://"+ip+":3443"+"/grey/storage_upload/"+key+"/"+toktok, files=files)
+    else:
+        req = requests.post("http://"+ip+":3443"+"/grey/storage_upload/"+key+"/"+toktok+"/"+DIR, files=files)
+    
     # remove the file from local storage    
-    if os.path.exists(os.path.join(GREYFISH_FOLDER+'DIR_'+str(toktok)+'/'+'/'.join(DIR.split('++')), new_name)):
-        os.remove(os.path.join(GREYFISH_FOLDER+'DIR_'+str(toktok)+'/'+'/'.join(DIR.split('++')), new_name))
+    if os.path.exists(os.path.join(UPLOAD_DIR, new_name)):
+        os.remove(os.path.join(UPLOAD_DIR, new_name))
+   
+    if "INVALID" in req.text:
+        return req.text
     
-    if req.text == "INVALID node key":
-        return 'File not uploaded due to invalid node key'
-
-    action="allocate"
-    bf.update_node_files(toktok,new_name,vmip,DIR,action)
-    bf.update_node_space(vmip,nkey,filesize,action)
-    
-    return 'File succesfully uploaded to Greyfish'
+    bf.greyfish_log(IP_addr, toktok, "upload", "single file", '/'.join(DIR.split('++')), new_name)
+    return req.text
 
 
 # Deletes a file already present in the user
+@app.route('/grey/delete_file/<gkey>/<toktok>/<FILE>',defaults={'DIR':''})
 @app.route('/grey/delete_file/<gkey>/<toktok>/<FILE>/<DIR>')
 def delete_file(toktok, gkey, FILE, DIR=''):
     
@@ -329,24 +351,24 @@ def delete_file(toktok, gkey, FILE, DIR=''):
         bf.failed_login(gkey, IP_addr, toktok, "delete-file")
         return "INVALID key"
 
-    vmip,nkey = bf.get_file_vm(FILE,DIR)
+    vmip,nkey = bf.get_file_vm(toktok,FILE,DIR)
     if vmip == None or nkey == None:
         return "Unable to locate the file"
 
-    req = requests.get("http://"+vmip+":3443"+"/grey/storage_delete_file/"+nkey+"/"+toktok+"/"+FILE+"/"+DIR)
-
-    if req.text=="INVALID node key" or req.text=="INVALID, User directory does not exist" or req.text == "File is not present in Greyfish":
-        return req.text
+    if DIR=='':
+        req = requests.get("http://"+vmip+":3443"+"/grey/storage_delete_file/"+nkey+"/"+toktok+"/"+FILE)
     else:
-        fsize=int(req.text)
-        action="free"
-        bf.update_node_files(toktok,FILE,vmip,DIR,action)
-        bf.update_node_space(vmip,nkey,fsize,action)
-        bf.greyfish_log(IP_addr, toktok, "delete", "single file", '/'.join(DIR.split('++')), str(FILE))
-        return "File succesfully deleted from Greyfish storage"
- 
+        req = requests.get("http://"+vmip+":3443"+"/grey/storage_delete_file/"+nkey+"/"+toktok+"/"+FILE+"/"+DIR)
+
+    if "INVALID" in req.text or req.text == "File is not present in Greyfish":
+        return req.text
+                                                      
+    bf.greyfish_log(IP_addr, toktok, "delete", "single file", '/'.join(DIR.split('++')), str(FILE))
+    return req.text
+    #return "File succesfully deleted from Greyfish storage"
  
 # Returns a file
+@app.route('/grey/grey/<gkey>/<toktok>/<FIL>',defaults={'DIR':''})
 @app.route('/grey/grey/<gkey>/<toktok>/<FIL>/<DIR>')
 def grey_file(gkey, toktok, FIL, DIR=''):
 
@@ -355,45 +377,41 @@ def grey_file(gkey, toktok, FIL, DIR=''):
         bf.failed_login(gkey, IP_addr, toktok, "download-file")
         return "INVALID key"
     
-    vmip,nkey = bf.get_file_vm(FIL,DIR)
+    vmip,nkey = bf.get_file_vm(toktok,FIL,DIR)
     if vmip == None or nkey == None:
         return "Unable to locate the file"
     
-    req = requests.get("http://"+vmip+":3443"+"/grey/storage_grey/"+nkey+"/"+toktok+"/"+FIL+"/"+DIR)
+    if DIR=='':
+        req = requests.get("http://"+vmip+":3443"+"/grey/storage_grey/"+nkey+"/"+toktok+"/"+FIL)
+    else:
+        req = requests.get("http://"+vmip+":3443"+"/grey/storage_grey/"+nkey+"/"+toktok+"/"+FIL+"/"+DIR)
 
     if "INVALID" in req.text:
         return req.text
     
     USER_DIR=GREYFISH_FOLDER+'DIR_'+str(toktok)+'/download/'
-    if not os.path.exists(USER_DIR):
-        os.makedirs(USER_DIR)
+    if os.path.exists(USER_DIR):
+        shutil.rmtree(USER_DIR)
+    os.makedirs(USER_DIR)
 
     open(USER_DIR+FIL,'wb').write(req.content)
 
     os.chdir(USER_DIR)
     checksum = ch.sha256_checksum(FIL)
-    print("file checksum: ", checksum)
-
-    if not bf.verify_checksum(checksum, FIL, DIR, toktok, False):
-        print('checksum do not match')
-        #return "The Folder has been corrupted"
-    else:
-        print('checksum matches')
-        
-    if os.path.exists(USER_DIR+'summary.tar.gz'):
-        os.remove(USER_DIR+'summary.tar.gz')
-
     checksumfile = open("checksum.txt","w")
     checksumfile.write(checksum)
     checksumfile.close()
+    bf.update_file_checksum(toktok,FIL,vmip,DIR,checksum)
     
+    if os.path.exists(USER_DIR+'summary.tar.gz'):
+        os.remove(USER_DIR+'summary.tar.gz')
+  
     tar = tarfile.open("summary.tar.gz", "w:gz")
     to_be_tarred = [x for x in os.listdir('.') if x != "summary.tar.gz"]
     for ff in to_be_tarred:
         tar.add(ff)
         os.remove(ff)
     tar.close()
-
     os.chdir(CURDIR)
 
     bf.greyfish_log(IP_addr, toktok, "download", "single file", '/'.join(DIR.split('++')), FIL)
@@ -406,16 +424,24 @@ def grey_file(gkey, toktok, FIL, DIR=''):
 # Uploads one directory, it the directory already exists, then it deletes it and uploads the new contents
 # Must be a tar file
 @app.route("/grey/upload_dir/<gkey>/<toktok>/<DIR>", methods=['POST'])
-def upload_dir(gkey, toktok, DIR):
+def upload_dir(gkey, toktok, DIR=''):
 
     IP_addr = request.environ['REMOTE_ADDR']
     if not bf.valid_key(gkey, toktok):
         bf.failed_login(gkey, IP_addr, toktok, "upload-dir")
         return "INVALID key"
 
+    # user must be added to the database beforehand
+    if not bf.valid_user(toktok):
+        bf.failed_login(gkey, IP_addr, toktok, "upload-file")
+        return "INVALID user"
+
+    dir_vm,_=bf.get_folder_vm(toktok,'++'.join(DIR.split('++')[:-1]))
+    if not len(dir_vm):
+        return "INVALID Directory does not exist"
+
     file = request.files['file']
     fnam = file.filename
-
     # Avoids empty filenames and those with commas
     if fnam == '':
         return 'INVALID, no file uploaded'
@@ -426,46 +452,55 @@ def upload_dir(gkey, toktok, DIR):
     # Untars the file, makes a directory if it does not exist
     if ('.tar.gz' not in fnam) and ('.tgz' not in fnam):
         return 'ERROR: Compression file not accepted, file must be .tgz or .tar.gz'
-
+    
+    #save file locally
+    UPLOAD_DIR = GREYFISH_FOLDER+'DIR_'+str(toktok)+'/upload'
+    if os.path.exists(UPLOAD_DIR):
+        shutil.rmtree(UPLOAD_DIR)
+    os.makedirs(UPLOAD_DIR)
     new_name = secure_filename(fnam)
     vmip=nkey=dirsize=None
 
     try:
-        if os.path.exists(GREYFISH_FOLDER+'DIR_'+str(toktok)+'/'+'/'.join(DIR.split('++'))):
-            shutil.rmtree(GREYFISH_FOLDER+'DIR_'+str(toktok)+'/'+'/'.join(DIR.split('++')))
-
-        os.makedirs(GREYFISH_FOLDER+'DIR_'+str(toktok)+'/'+'/'.join(DIR.split('++')))
-        file.save(os.path.join(GREYFISH_FOLDER+'DIR_'+str(toktok)+'/'+'/'.join(DIR.split('++')), new_name))
-        tar = tarfile.open(GREYFISH_FOLDER+'DIR_'+str(toktok)+'/'+'/'.join(DIR.split('++'))+'/'+new_name)
-        tar.extractall(GREYFISH_FOLDER+'DIR_'+str(toktok)+'/'+'/'.join(DIR.split('++')))
+        file.save(os.path.join(UPLOAD_DIR, new_name))
+        tar = tarfile.open(UPLOAD_DIR+'/'+new_name)
+        tar.extractall(UPLOAD_DIR)
         tar.close()
-        dirsize = bf.get_dir_size(GREYFISH_FOLDER+'DIR_'+str(toktok)+'/'+'/'.join(DIR.split('++'))+'/'+new_name.split('.')[0])
-        vmip, nkey = bf.get_available_vm(dirsize)
-
+        dirsize = bf.get_dir_size(UPLOAD_DIR+'/'+new_name.split('.')[0])
+        vmip, nkey = bf.get_available_vms(dirsize)
     except:
         return "Could not open tar file" 
 
-    if vmip==None or nkey==None:
+    if len(vmip)==0 or len(nkey)==0:
+        os.remove(os.path.join(UPLOAD_DIR, new_name))
+        shutil.rmtree(UPLOAD_DIR+'/'+new_name.split('.')[0])
         return "Can't find the VM to fit the directory"
+
+    ip=key=None
+    for i in range(len(vmip)):
+        if vmip[i] in dir_vm:
+            ip=vmip[i]
+            key=nkey[i]
+            break
+        else:
+            continue
+    if ip==None or key==None:
+        ip=vmip[0]
+        key=nkey[0]
     
-    files = {'file': open(os.path.join(GREYFISH_FOLDER+'DIR_'+str(toktok)+'/'+'/'.join(DIR.split('++')), new_name), 'rb')}
-    req = requests.post("http://"+vmip+":3443"+"/grey/storage_upload_dir/"+nkey+"/"+toktok+"/"+DIR, files=files)
+    files = {'file': open(os.path.join(UPLOAD_DIR, new_name), 'rb')}
+    req = requests.post("http://"+ip+":3443"+"/grey/storage_upload_dir/"+key+"/"+toktok+"/"+DIR, files=files)
 
     # remove the file from local storage    
-    if os.path.exists(os.path.join(GREYFISH_FOLDER+'DIR_'+str(toktok)+'/'+'/'.join(DIR.split('++')), new_name)):
-        os.remove(os.path.join(GREYFISH_FOLDER+'DIR_'+str(toktok)+'/'+'/'.join(DIR.split('++')), new_name))
-        shutil.rmtree(GREYFISH_FOLDER+'DIR_'+str(toktok)+'/'+'/'.join(DIR.split('++'))+'/'+new_name.split('.')[0])
+    if os.path.exists(os.path.join(UPLOAD_DIR, new_name)):
+        os.remove(os.path.join(UPLOAD_DIR, new_name))
+        shutil.rmtree(UPLOAD_DIR+'/'+new_name.split('.')[0])
 
-
-    if "INVALID" in req.text:
+    if "INVALID" in req.text or "ERROR" in req.text:
         return req.text
-    dirsize=int(req.text)
-    action="allocate"
-    bf.update_node_folders(toktok,new_name,vmip,DIR,action)
-    bf.update_node_space(vmip,nkey,dirsize,action)
 
     bf.greyfish_log(IP_addr, toktok, "upload", "dir", '/'.join(DIR.split('++')))
-    return 'Directory succesfully uploaded to Greyfish'
+    return req.text
 
 
 # Deletes a directory
@@ -477,19 +512,14 @@ def delete_dir(toktok, gkey, DIR):
         bf.failed_login(gkey, IP_addr, toktok, "delete-dir")
         return "INVALID key"
 
-    vmip,nkey=bf.get_folder_vm(DIR)
-    fsize=0
+    vmip,nkey=bf.get_folder_vm(toktok,DIR)
+    #fsize=0
     for i in range(len(vmip)):
         req = requests.get("http://"+vmip[i]+":3443"+"/grey/storage_delete_dir/"+nkey[i]+"/"+toktok+"/"+DIR)
         if req.text=="INVALID node key" or req.text=="User directory does not exist":
             continue
-        else:
-            fsize=int(req.text)
-            action="free"
-            bf.update_node_folders(toktok,'',vmip[i],DIR,action)
-            bf.update_node_space(vmip[i],nkey[i],fsize,action)
     bf.greyfish_log(IP_addr, toktok, "delete", "single dir", '/'.join(DIR.split('++')))
-    return "Directory deleted"
+    return req.text
 
 # Downloads a directory
 # Equivalent to downloading the tar file, since they are both equivalent
@@ -502,11 +532,11 @@ def grey_dir(gkey, toktok, DIR=''):
         return "INVALID key"
 
     USER_DIR=GREYFISH_FOLDER+'DIR_'+str(toktok)+'/download/'
-    if not os.path.exists(USER_DIR):
-        #shutil.rmtree(USER_DIR)
-        os.makedirs(USER_DIR)
+    if os.path.exists(USER_DIR):
+        shutil.rmtree(USER_DIR)
+    os.makedirs(USER_DIR)
 
-    vmip,nkey=bf.get_folder_vm(DIR)
+    vmip,nkey=bf.get_folder_vm(toktok,DIR)
     for i in range(len(vmip)):
         req = requests.get("http://"+vmip[i]+":3443"+"/grey/storage_grey_dir/"+nkey[i]+"/"+toktok+"/"+DIR,stream=True)
         if "INVALID" in req.text:
@@ -525,103 +555,25 @@ def grey_dir(gkey, toktok, DIR=''):
 
 
     checksum = ch.sha256_checksum_dir(USER_DIR)
-    #print("checksum: ", checksum)
-
-    if not bf.verify_checksum(checksum, DIR.split('++')[-1], '++'.join(DIR.split('++')[:-1]), toktok, True):
-        #print('checksum do not match')
-        return "The Folder has been corrupted"
-    #else:
-    #    print('checksum matches')
-
+    bf.update_folder_checksum(toktok,vmip,DIR,checksum)
     os.chdir(USER_DIR)
     checksumfile = open("checksum.txt","w")
     checksumfile.write(checksum)
     checksumfile.close()
+
     tar = tarfile.open("summary.tar.gz", "w:gz")
     to_be_tarred = [x for x in os.listdir('.') if x != "summary.tar.gz"]
     for ff in to_be_tarred:
         tar.add(ff)
-        os.remove(ff)
+        if os.path.isdir(ff):
+            shutil.rmtree(ff)
+        else:
+            os.remove(ff)
     tar.close()
-
     os.chdir(CURDIR)
     
     bf.greyfish_log(IP_addr, toktok, "download", "dir", '/'.join(DIR.split('++')))
-
     return send_file(USER_DIR+"summary.tar.gz")
 
-#################################
-# CHECKSUM ACTIONS
-#################################
-
-# Downloads a directory with a checksum as a tar file
-# The file is name after the first 8 characters of the checksum
-# The tar file is moved onto a temporary directory afterwards, where it can be deleted if the checksum is correct
-@app.route('/grey/download_checksum_dir/<gkey>/<toktok>/<DIR>')
-def download_checksum_dir(gkey, toktok, DIR=''):
-    IP_addr = request.environ['REMOTE_ADDR']
-    if not bf.valid_key(gkey, toktok):
-        bf.failed_login(gkey, IP_addr, toktok, "download-dir")
-        return "INVALID key"
-
-    USER_DIR=GREYFISH_FOLDER+'DIR_'+str(toktok)+'/download/'
-    if os.path.exists(USER_DIR):
-        shutil.rmtree(USER_DIR)
-    os.makedirs(USER_DIR)
-    vmip,nkey=bf.get_folder_vm(DIR)
-    for i in range(len(vmip)):
-        req = requests.get("http://"+vmip[i]+":3443"+"/grey/storage_grey_dir/"+nkey[i]+"/"+toktok+"/"+DIR,stream=True)
-        if "INVALID" in req.text:
-            continue
-        else:
-            if os.path.exists(USER_DIR+'summary.tar.gz'):
-                os.remove(USER_DIR+'summary.tar.gz')
-
-            with open(USER_DIR+'summary.tar.gz','wb') as fd:
-                for chunk in req.iter_content(chunk_size=128):
-                    fd.write(chunk)
-
-            with tarfile.open(USER_DIR+'summary.tar.gz',"r:gz") as tf:
-                tf.extractall(USER_DIR)
-            os.remove(USER_DIR+'summary.tar.gz')
-
-    bf.greyfish_log(IP_addr, toktok, "download", "dir", '/'.join(DIR.split('++')))
-
-    os.chdir(USER_DIR)
-    tar = tarfile.open("summary.tar.gz", "w:gz")
-    for ff in os.listdir('.'):
-        tar.add(ff)
-    tar.close()
-
-    checksum8_name = ch.sha256_checksum("summary.tar.gz")[:8]+".tar.gz"
-    checksum_dir = GREYFISH_FOLDER+'DIR_'+str(toktok)+'/checksum_files/'
-
-    # If the temporary directory does not exist, it creates it
-    if not os.path.isdir(checksum_dir):
-        os.makedirs(checksum_dir)
-
-    shutil.move("summary.tar.gz", checksum_dir + checksum8_name)
-    os.chdir(CURDIR)
-
-    bf.greyfish_log(IP_addr, toktok, "download checksum", "dir", '/'.join(DIR.split('++')))
-    return send_file(checksum_dir + checksum8_name, as_attachment=True)
-
-
-# Deletes a checksum file given its file name
-@app.route('/grey/delete_checksum_file/<gkey>/<toktok>/<FILE>')
-def delete_checksum_file(toktok, gkey, FILE):
-
-    IP_addr = request.environ['REMOTE_ADDR']
-    checksum_dir = GREYFISH_FOLDER+'DIR_'+str(toktok)+'/checksum_files/'
-    if not bf.valid_key(gkey, toktok):
-        bf.failed_login(gkey, IP_addr, toktok, "delete-file")
-        return "INVALID key"
-
-    if not os.path.exists(checksum_dir+FILE):
-        return 'Checksum file is not present in Greyfish'
-
-    os.remove(checksum_dir+FILE)
-    bf.greyfish_log(IP_addr, toktok, "delete", "checksum file", FILE)
-    return 'Checksum file succesfully deleted from Greyfish storage'
 if __name__ == '__main__':
    app.run()

@@ -16,20 +16,31 @@ CREATE TABLE greykeys (
 
 DROP TABLE IF EXISTS user;
 CREATE TABLE user (
-    id        int(11)     NOT NULL AUTO_INCREMENT,
-    name           varchar(24)     NOT NULL,
-    max_data         varchar(20)        DEFAULT NULL,
+    id        	int				NOT NULL AUTO_INCREMENT,
+    name		varchar(24)     NOT NULL,
+    max_data	varchar(20)		DEFAULT NULL,
     PRIMARY KEY (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 DROP TABLE IF EXISTS node;
 CREATE TABLE node (
-    ip 			varchar(16)     NOT NULL,
-    total_space		varchar(16)     NOT NULL,
-    free_space		varchar(16)     NOT NULL,
-    status		varchar(10)     NOT NULL,
+    ip				varchar(16)     NOT NULL,
+    total_space		int     NOT NULL,
+    free_space		int     NOT NULL,
+    status			varchar(10)     NOT NULL,
     node_key 		varchar(10)     NOT NULL,
     PRIMARY KEY (ip)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+DROP TABLE IF EXISTS file;
+CREATE TABLE file (
+	id 			varchar(16) 	NOT NULL,
+	user_id		varchar(24)		NOT NULL,
+	ip			varchar(16)		NOT NULL,
+	directory	varchar(30)		NOT NULL,
+	is_dir		tinyint(1)		DEFAULT '0',
+	checksum	varchar(64)		DEFAULT NULL,
+	PRIMARY KEY (`ip`,`user_id`,`id`,`directory`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;	
 
 CREATE DEFINER=`root`@`localhost` EVENT `DELETE_GREYKEYS` ON SCHEDULE EVERY 10 SECOND STARTS NOW() ON COMPLETION NOT PRESERVE ENABLE DO DELETE FROM greykeys WHERE timeout < NOW();

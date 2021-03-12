@@ -1,5 +1,7 @@
 import os
+import mysql.connector as mysql_con
 
+GREYFISH_FOLDER="/greyfish/sandbox"
 
 # return size of the directory in bytes
 def get_dir_size(start_path = '.'):
@@ -7,8 +9,59 @@ def get_dir_size(start_path = '.'):
     for dirpath, dirnames, filenames in os.walk(start_path):
         for f in filenames:
             fp = os.path.join(dirpath, f)
-            # skip if it is symbolic link
             if not os.path.islink(fp):
                 total_size += os.path.getsize(fp)
-
     return total_size
+
+# add directory details to database if it's not there
+def add_dir(ip,userid,dir):
+    grey_db = mysql_con.connect(host = os.environ["URL_BASE"] , port = 6603, user = os.environ["MYSQL_USER"] , password = os.environ["MYSQL_PASSWORD"], database = os.environ["MYSQL_DATABASE"])
+    cursor = grey_db.cursor(buffered=True)
+    cursor.execute("insert ignore into file set ip=%s, user_id=%s, directory=%s, id='', is_dir=TRUE",(ip,userid,dir))
+    grey_db.commit();
+    cursor.close()
+    grey_db.close()
+
+# add file details to database if it's not there
+def add_file(ip,userid,dir,file):
+    grey_db = mysql_con.connect(host = os.environ["URL_BASE"] , port = 6603, user = os.environ["MYSQL_USER"] , password = os.environ["MYSQL_PASSWORD"], database = os.environ["MYSQL_DATABASE"])
+    cursor = grey_db.cursor(buffered=True)
+    cursor.execute("insert ignore into file set ip=%s, user_id=%s, directory=%s, id=%s, is_dir=FALSE",(ip,userid,dir,file))
+    grey_db.commit();
+    cursor.close()
+    grey_db.close()
+
+# remove file from the database
+def remove_file(ip,userid,dir,file):
+    grey_db = mysql_con.connect(host = os.environ["URL_BASE"] , port = 6603, user = os.environ["MYSQL_USER"] , password = os.environ["MYSQL_PASSWORD"], database = os.environ["MYSQL_DATABASE"])
+    cursor = grey_db.cursor(buffered=True)
+    cursor.execute("delete from file where ip=%s and user_id=%s and id=%s and directory=%s and is_dir=FALSE",(ip,userid,file,dir))
+    grey_db.commit()
+    cursor.close()
+    grey_db.close()
+
+# remove each directory and sub-directories
+def remove_dir(ip,userid,directory):
+    grey_db = mysql_con.connect(host = os.environ["URL_BASE"] , port = 6603, user = os.environ["MYSQL_USER"] , password = os.environ["MYSQL_PASSWORD"], database = os.environ["MYSQL_DATABASE"])
+    cursor = grey_db.cursor(buffered=True)
+    cursor.execute("delete from file where ip=%s and user_id=%s and directory like %s",(ip,userid,directory+"%"))
+    grey_db.commit()
+    cursor.close()
+    grey_db.close()
+
+# update free space
+def update_node_space(ip):
+    grey_db = mysql_con.connect(host = os.environ["URL_BASE"] , port = 6603, user = os.environ["MYSQL_USER"] , password = os.environ["MYSQL_PASSWORD"], database = os.environ["MYSQL_DATABASE"])
+    cursor = grey_db.cursor(buffered=True)
+    cursor.execute("select total_space from node where ip=%s",(ip,))
+    totalspace=None
+    for row in cursor:
+        totalspace=row[0]
+    occupiedspace=get_dir_size(GREYFISH_FOLDER)
+    if (totalspace-occupiedspace) > 100:
+        cursor.execute("update node set free_space=%s, status='Available' where ip=%s",((totalspace-occupiedspace),ip))
+    else:
+        cursor.execute("update node set free_space=%s, status='Full' where ip=%s",((totalspace-occupiedspace),ip))
+    grey_db.commit()
+    cursor.close()
+    grey_db.close()

@@ -9,16 +9,16 @@ Implements communication between end user calling greyfish and the other nodes
 from flask import Flask, request, send_file
 import os, shutil
 import redis
+import requests
 from werkzeug.utils import secure_filename
 import base_functions as bf
-import tarfile
+import tarfile, traceback
 
 app = Flask(__name__)
 GREYFISH_FOLDER = "/greyfish/sandbox/"
 
 
 URL_BASE = os.environ["URL_BASE"]
-#REDIS_AUTH = os.environ["REDIS_AUTH"]
 CURDIR = dir_path = os.path.dirname(os.path.realpath(__file__))
 
 
@@ -28,7 +28,7 @@ CURDIR = dir_path = os.path.dirname(os.path.realpath(__file__))
 
 # Uploads one file
 # Directories must be separated by ++
-
+@app.route("/grey/storage_upload/<nkey>/<toktok>", methods=['POST'], defaults={'DIR':''})
 @app.route("/grey/storage_upload/<nkey>/<toktok>/<DIR>", methods=['POST'])
 def result_upload(nkey,toktok,DIR=''):
     
@@ -40,10 +40,6 @@ def result_upload(nkey,toktok,DIR=''):
 
     file = request.files['file']
     fnam = file.filename
-    #print("Storage node data: ")
-    #print("User: ",toktok)
-    #print("nkey: ",nkey)
-    #print("DIR: ",DIR)
 
     # Ensures no commands within the filename
     new_name = secure_filename(fnam)
@@ -51,9 +47,14 @@ def result_upload(nkey,toktok,DIR=''):
     if not os.path.exists(GREYFISH_FOLDER+'DIR_'+str(toktok)+'/'+'/'.join(DIR.split('++'))):
         os.makedirs(GREYFISH_FOLDER+'DIR_'+str(toktok)+'/'+'/'.join(DIR.split('++')))
     file.save(os.path.join(GREYFISH_FOLDER+'DIR_'+str(toktok)+'/'+'/'.join(DIR.split('++')), new_name))
+    res = requests.get("http://"+URL_BASE+":2443/grey/cluster/whoami")
+    ip = res.text
+    bf.add_file(ip,toktok,DIR,new_name)
+    bf.update_node_space(ip)
     return 'File succesfully uploaded to Greyfish'
 
 # Deletes a file already present in the user
+@app.route('/grey/storage_delete_file/<nkey>/<toktok>/<FILE>', defaults={'DIR':''})
 @app.route('/grey/storage_delete_file/<nkey>/<toktok>/<FILE>/<DIR>')
 def delete_file(toktok, nkey, FILE, DIR=''):
 
@@ -64,19 +65,17 @@ def delete_file(toktok, nkey, FILE, DIR=''):
        return 'INVALID, User directory does not exist'
 
     try:
-        file_stats=os.stat(GREYFISH_FOLDER+'DIR_'+str(toktok)+'/'+'/'.join(DIR.split('++'))+'/'+str(FILE))
-        file_size=file_stats.st_size
+        res = requests.get("http://"+URL_BASE+":2443/grey/cluster/whoami")
+        ip = res.text
+        bf.remove_file(ip,toktok,DIR,FILE)
         os.remove(GREYFISH_FOLDER+'DIR_'+str(toktok)+'/'+'/'.join(DIR.split('++'))+'/'+str(FILE))
-        #bf.greyfish_log(IP_addr, toktok, "delete", "single file", '/'.join(DIR.split('++')), str(FILE))
-        print('File succesfully deleted from Greyfish storage')
-        return str(file_size)
-
+        bf.update_node_space(ip)
+        return 'File succesfully deleted from Greyfish storage'
     except:
-        return 'File is not present in Greyfish'
-
-
+        return 'INVALID, File is not present in Greyfish'
 
 # Returns a file
+@app.route("/grey/storage_grey/<nkey>/<toktok>/<FIL>", defaults={'DIR':''})
 @app.route('/grey/storage_grey/<nkey>/<toktok>/<FIL>/<DIR>')
 def grey_file(nkey, toktok, FIL, DIR=''):
 
@@ -86,7 +85,7 @@ def grey_file(nkey, toktok, FIL, DIR=''):
     if str('DIR_'+toktok) not in os.listdir(GREYFISH_FOLDER):
        return 'INVALID, User directory does not exist'
 
-    USER_DIR = GREYFISH_FOLDER+'DIR_'+str(toktok)+'/'+'/'.join(DIR.split('++'))+'/'
+    USER_DIR = GREYFISH_FOLDER+'DIR_'+str(toktok)+'/'+'/'.join(DIR.split('++'))
     if str(FIL) not in os.listdir(USER_DIR):
        return 'INVALID, File not available'
 
@@ -122,6 +121,8 @@ def upload_dir(nkey, toktok, DIR):
         return 'ERROR: Compression file not accepted, file must be .tgz or .tar.gz'
 
     new_name = secure_filename(fnam)
+    res = requests.get("http://"+URL_BASE+":2443/grey/cluster/whoami")
+    ip = res.text
 
     try:
         if os.path.exists(GREYFISH_FOLDER+'DIR_'+str(toktok)+'/'+'/'.join(DIR.split('++'))):
@@ -133,30 +134,38 @@ def upload_dir(nkey, toktok, DIR):
         tar.extractall(GREYFISH_FOLDER+'DIR_'+str(toktok)+'/'+'/'.join(DIR.split('++')))
         tar.close()
         os.remove(GREYFISH_FOLDER+'DIR_'+str(toktok)+'/'+'/'.join(DIR.split('++'))+'/'+new_name)
-        dirsize = bf.get_dir_size(GREYFISH_FOLDER+'DIR_'+str(toktok)+'/'+'/'.join(DIR.split('++'))+'/')
-        print('Directory succesfully uploaded to Greyfish')
-        return str(dirsize)
     except:
-        return "Could not open tar file" 
+        traceback.print_exc()
+        return "ERROR: Could not open tar file" 
 
-    #return 'Directory succesfully uploaded to Greyfish'
+    try:
+        for root, dirs, files in os.walk(GREYFISH_FOLDER+'DIR_'+str(toktok)+'/'+'/'.join(DIR.split('++'))):
+            print('dir: ','++'.join(root.replace(GREYFISH_FOLDER+'DIR_'+str(toktok)+'/','').split('/')))
+            bf.add_dir(ip,toktok,'++'.join(root.replace(GREYFISH_FOLDER+'DIR_'+str(toktok)+'/','').split('/')))
+            for file in files:
+                bf.add_file(ip,toktok,'++'.join(root.replace(GREYFISH_FOLDER+'DIR_'+str(toktok)+'/','').split('/')),file)
+    except:
+        traceback.print_exc()
+        return "ERROR: can't update database"
+    bf.update_node_space(ip)
+    return 'Directory succesfully uploaded to Greyfish'
 
 # Deletes a directory
 @app.route("/grey/storage_delete_dir/<nkey>/<toktok>/<DIR>")
 def delete_dir(toktok, nkey, DIR):
 
     if not nkey == os.environ['NODE_KEY']:
-        return "INVALID node key"
+        return "INVALID, node key"
 
-    dirsize=0
-    try:
-        dirsize = bf.get_dir_size(GREYFISH_FOLDER+'DIR_'+str(toktok)+'/'+'/'.join(DIR.split('++'))+'/')
+    try:        
+        res = requests.get("http://"+URL_BASE+":2443/grey/cluster/whoami")
+        ip = res.text
+        bf.remove_dir(ip,toktok,DIR)
         shutil.rmtree(GREYFISH_FOLDER+'DIR_'+str(toktok)+'/'+'/'.join(DIR.split('++'))+'/')
-        print("Directory deleted")
-        return str(dirsize)
-
+        bf.update_node_space(ip)
+        return "Directory deleted"
     except:
-        return "User directory does not exist"
+        return "INVALID, User directory does not exist"
 
 # Downloads a directory
 # Equivalent to downloading the tar file, since they are both equivalent
@@ -177,7 +186,9 @@ def grey_dir(nkey, toktok, DIR=''):
     os.chdir(USER_DIR)
 
     tar = tarfile.open("summary.tar.gz", "w:gz")
-    for ff in os.listdir('.'):
+    to_be_tarred = [x for x in os.listdir('.') if x != "summary.tar.gz"]
+
+    for ff in to_be_tarred:
         tar.add(ff)
     tar.close()
 

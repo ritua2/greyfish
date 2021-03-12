@@ -22,6 +22,12 @@ ENV REDIS_AUTH "redis_auth"
 ENV orchestra_key "karaoke"
 # Similar to that of the manager node
 ENV URL_BASE "example.com"
+# Similar to that of the manager node
+ENV MYSQL_DATABASE "greyfish"
+# Similar to that of the manager node
+ENV MYSQL_USER "root"
+# Similar to that of the manager node
+ENV MYSQL_PASSWORD "password"
 # Filesystem where all data will stored. For example: /dev/sda1
 ENV FILESYSTEM "overlay"
 # Maximum total storage allowed for users in KB, must be a positive integer
@@ -33,7 +39,7 @@ ENV MAX_STORAGE "1000000"
 # Installs the necessary packages
 # Bash for convenience
 RUN mkdir -p /greyfish/sandbox &&\
-    pip3 install gunicorn Flask redis requests &&\
+    pip3 install gunicorn Flask mysql-connector-python redis requests &&\
     chmod +x /grey/setup.sh /grey/traffic.py
 
 
