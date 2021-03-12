@@ -34,9 +34,9 @@ CREATE TABLE node (
 
 DROP TABLE IF EXISTS file;
 CREATE TABLE file (
-	id 			varchar(16) 	NOT NULL,
+	ip 			varchar(16) 	NOT NULL,
 	user_id		varchar(24)		NOT NULL,
-	ip			varchar(16)		NOT NULL,
+	id			varchar(16)		NOT NULL,
 	directory	varchar(30)		NOT NULL,
 	is_dir		tinyint(1)		DEFAULT '0',
 	checksum	varchar(64)		DEFAULT NULL,
