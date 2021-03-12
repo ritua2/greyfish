@@ -13,6 +13,7 @@ COPY certfile.crt       /grey/certfile.crt
 COPY keyfile.key        /grey/keyfile.key
 COPY setup.sh           /grey/setup.sh
 COPY traffic.py         /grey/traffic.py
+COPY base_functions.py         /grey/base_functions.py
 
 # Individual key used to attach node or to give it instructions
 ENV NODE_KEY "node1"
