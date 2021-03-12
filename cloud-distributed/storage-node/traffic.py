@@ -196,5 +196,20 @@ def grey_dir(nkey, toktok, DIR=''):
 
     return send_file(USER_DIR+"summary.tar.gz")
 
+# Deletes a user directory
+@app.route("/grey/storage_delete_user/<nkey>/<toktok>")
+def delete_user_dir(nkey, toktok):
+
+    if not nkey == os.environ['NODE_KEY']:
+        return "INVALID, node key"
+
+    try:
+        res = requests.get("http://"+URL_BASE+":2443/grey/cluster/whoami")
+        ip = res.text
+        shutil.rmtree(GREYFISH_FOLDER+'DIR_'+str(toktok))
+        bf.update_node_space(ip)
+        return "User directory deleted"
+    except:
+        return "INVALID, User directory does not exist"
 if __name__ == '__main__':
    app.run()

@@ -13,7 +13,7 @@ import requests
 import base_functions as bf
 import mysql.connector as mysql_con
 from werkzeug.utils import secure_filename
-import tarfile, shutil
+import tarfile, shutil, traceback
 import checksums as ch
 app = Flask(__name__)
 
@@ -26,7 +26,6 @@ CURDIR = dir_path = os.path.dirname(os.path.realpath(__file__))
 #################################
 # USER ACTIONS
 #################################
-
 
 
 # Creates a user
@@ -83,6 +82,13 @@ def create_user():
         grey_db = mysql_con.connect(host = os.environ["URL_BASE"] , port = 6603, user = os.environ["MYSQL_USER"] , password = os.environ["MYSQL_PASSWORD"], database = os.environ["MYSQL_DATABASE"])
         cursor = grey_db.cursor(buffered=True)
         cursor.execute("insert into user(name,max_data) values(%s,'100')",(toktok,))
+        grey_db.commit()
+        cursor.execute("select ip from node")
+        nodes=[]
+        for row in cursor:
+            nodes.append(row[0])
+        for node in nodes:
+            cursor.execute("insert into file set ip=%s, user_id=%s, id='', directory='', is_dir=TRUE",(node,toktok))
         grey_db.commit()
         cursor.close()
         grey_db.close()
@@ -142,12 +148,24 @@ def delete_user():
         grey_db = mysql_con.connect(host = os.environ["URL_BASE"] , port = 6603, user = os.environ["MYSQL_USER"] , password = os.environ["MYSQL_PASSWORD"], database = os.environ["MYSQL_DATABASE"])
         cursor = grey_db.cursor(buffered=True)
         cursor.execute("delete from user where name=%s",(toktok,))
+        cursor.execute("select distinct(ip) from file where user_id=%s",(toktok,))
+        nodes=[]
+        keys=None
+        for row in cursor:
+            nodes.append(row[0])
+        for i in range(len(nodes)):
+            cursor.execute("select node_key from node where ip=%s",(nodes[i],))
+            for row in cursor:
+                key=row[0]
+            req = requests.get("http://"+nodes[i]+":3443"+"/grey/storage_delete_user/"+key+"/"+toktok)
+            cursor.execute("delete from file where ip=%s and user_id=%s",(nodes[i],toktok))
         grey_db.commit()
         cursor.close()
         grey_db.close()
 
         return "User files and data have been completely deleted"
     except:
+        traceback.print_exc()
         return "INVALID, Server Error: Could not connect to database"
 
 
@@ -200,6 +218,13 @@ def cluster_addme():
         grey_db = mysql_con.connect(host = os.environ["URL_BASE"] , port = 6603, user = os.environ["MYSQL_USER"] , password = os.environ["MYSQL_PASSWORD"], database = os.environ["MYSQL_DATABASE"])
         cursor = grey_db.cursor(buffered=True)
         cursor.execute("insert into node(ip,total_space,free_space,node_key,status) values(%s,%s,%s,%s,'Available')",(IP_addr,MAX_STORAGE,MAX_STORAGE,NODE_KEY))
+        grey_db.commit()
+        cursor.execute("select name from user")
+        users=[]
+        for row in cursor:
+            users.append(row[0])
+        for user in users:
+            cursor.execute("insert into file set ip=%s, user_id=%s, id='', directory='', is_dir=TRUE",(IP_addr,user))
         grey_db.commit()
         cursor.close()
         grey_db.close()
@@ -254,11 +279,12 @@ def removeme_as_is():
         grey_db = mysql_con.connect(host = os.environ["URL_BASE"] , port = 6603, user = os.environ["MYSQL_USER"] , password = os.environ["MYSQL_PASSWORD"], database = os.environ["MYSQL_DATABASE"])
         cursor = grey_db.cursor(buffered=True)
         cursor.execute("delete from node where ip=%s",(node_IP,))
+        cursor.execute("delete from file where ip=%s",(node_IP,))
         grey_db.commit()
         cursor.close()
         grey_db.close()
 
-        return "Node removed as is"
+        return "Node removed from the cluster"
     except:
         return "INVALID, Server Error: Could not connect to database"
 
