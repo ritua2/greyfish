@@ -169,6 +169,7 @@ def delete_dir(toktok, nkey, DIR):
 
 # Downloads a directory
 # Equivalent to downloading the tar file, since they are both equivalent
+@app.route('/grey/storage_grey_dir/<nkey>/<toktok>',defaults={'DIR':''})
 @app.route('/grey/storage_grey_dir/<nkey>/<toktok>/<DIR>')
 def grey_dir(nkey, toktok, DIR=''):
 
@@ -178,7 +179,7 @@ def grey_dir(nkey, toktok, DIR=''):
     if str('DIR_'+toktok) not in os.listdir(GREYFISH_FOLDER):
         return 'INVALID, User directory does not exist'
 
-    USER_DIR = GREYFISH_FOLDER+'DIR_'+str(toktok)+'/'+'/'.join(DIR.split('++'))+'/'
+    USER_DIR = GREYFISH_FOLDER+'DIR_'+str(toktok)+'/'+'/'.join(DIR.split('++'))
 
     if not os.path.exists(USER_DIR):
         return 'INVALID, Directory not available'
@@ -194,7 +195,7 @@ def grey_dir(nkey, toktok, DIR=''):
 
     os.chdir(CURDIR)
 
-    return send_file(USER_DIR+"summary.tar.gz")
+    return send_file(os.path.join(USER_DIR,"summary.tar.gz"))
 
 # Deletes a user directory
 @app.route("/grey/storage_delete_user/<nkey>/<toktok>")

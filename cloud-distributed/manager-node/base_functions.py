@@ -119,7 +119,7 @@ def update_file_checksum(toktok,new_name,vmip,DIR,checksum):
 def update_folder_checksum(toktok,vmip,DIR,checksum):
     grey_db = mysql_con.connect(host = os.environ["URL_BASE"] , port = 6603, user = os.environ["MYSQL_USER"] , password = os.environ["MYSQL_PASSWORD"], database = os.environ["MYSQL_DATABASE"])
     cursor = grey_db.cursor(buffered=True)
-    cursor.execute("update file set checksum=%s where directory=%s and user_id=%s",(checksum,DIR,toktok))
+    cursor.execute("update file set checksum=%s where id='' and directory=%s and user_id=%s",(checksum,DIR,toktok))
     grey_db.commit()
     cursor.close()
     grey_db.close()
