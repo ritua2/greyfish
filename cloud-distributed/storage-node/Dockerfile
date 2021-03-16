@@ -32,7 +32,8 @@ ENV MYSQL_PASSWORD "password"
 ENV FILESYSTEM "overlay"
 # Maximum total storage allowed for users in KB, must be a positive integer
 ENV MAX_STORAGE "1000000"
-
+# Reserved space for compressed files while downloading
+ENV RESERVED_STORAGE "300000"
 
 
 

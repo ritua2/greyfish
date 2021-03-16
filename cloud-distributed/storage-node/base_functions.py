@@ -58,7 +58,7 @@ def update_node_space(ip):
     for row in cursor:
         totalspace=row[0]
     occupiedspace=get_dir_size(GREYFISH_FOLDER)
-    if (totalspace-occupiedspace) > 100:
+    if (totalspace-occupiedspace) > 0:
         cursor.execute("update node set free_space=%s, status='Available' where ip=%s",((totalspace-occupiedspace),ip))
     else:
         cursor.execute("update node set free_space=%s, status='Full' where ip=%s",((totalspace-occupiedspace),ip))

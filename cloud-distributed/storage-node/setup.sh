@@ -35,6 +35,19 @@ if ! [[ "$MAX_STORAGE" =~ ^[0-9]+$ ]]; then
     exit
 fi
 
+# Checks that variable is a positive integer
+if ! [[ "$RESERVED_STORAGE" =~ ^[0-9]+$ ]]; then
+    error_message="ERROR: Reserved storage, identified by the 'MAX_STORAGE' variable must be an integer"
+    >&2 echo "$error_message"
+    exit
+fi
+
+if [ "$RESERVED_STORAGE" -gt "$MAX_STORAGE" ]; then
+    error_message="ERROR: Reserved storage can't be more than Maximum storage"
+    >&2 echo "$error_message"
+    exit
+fi
+
 
 # Ensures that the available space is equal or larger than the maximum possible
 available_space="${OS_filesystem_info[3]}" 
@@ -65,10 +78,11 @@ fi
 
 printf "\nNo errors with environmental variables\n"
 
+ALLOWED_STORAGE="$(($MAX_STORAGE-$RESERVED_STORAGE))"
 
 # Adds node to cluster
 curl -X POST -H "Content-Type: application/json"\
-    -d '{"orch_key":"'"$orchestra_key"'", "MAX_STORAGE":"'"$MAX_STORAGE"'", "NODE_KEY":"'"$NODE_KEY"'"}' \
+    -d '{"orch_key":"'"$orchestra_key"'", "MAX_STORAGE":"'"$ALLOWED_STORAGE"'", "NODE_KEY":"'"$NODE_KEY"'"}' \
     --insecure https://"$URL_BASE":2443/grey/cluster/addme
 
 
