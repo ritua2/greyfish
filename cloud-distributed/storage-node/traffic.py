@@ -16,11 +16,8 @@ import tarfile, traceback
 
 app = Flask(__name__)
 GREYFISH_FOLDER = "/greyfish/sandbox/"
-
-
 URL_BASE = os.environ["URL_BASE"]
 CURDIR = dir_path = os.path.dirname(os.path.realpath(__file__))
-
 
 #################################
 # FILE ACTIONS
@@ -30,8 +27,7 @@ CURDIR = dir_path = os.path.dirname(os.path.realpath(__file__))
 # Directories must be separated by ++
 @app.route("/grey/storage_upload/<nkey>/<toktok>", methods=['POST'], defaults={'DIR':''})
 @app.route("/grey/storage_upload/<nkey>/<toktok>/<DIR>", methods=['POST'])
-def result_upload(nkey,toktok,DIR=''):
-    
+def result_upload(nkey,toktok,DIR=''):    
     if not nkey == os.environ['NODE_KEY']:
         return "INVALID node key"
 
@@ -57,7 +53,6 @@ def result_upload(nkey,toktok,DIR=''):
 @app.route('/grey/storage_delete_file/<nkey>/<toktok>/<FILE>', defaults={'DIR':''})
 @app.route('/grey/storage_delete_file/<nkey>/<toktok>/<FILE>/<DIR>')
 def delete_file(toktok, nkey, FILE, DIR=''):
-
     if not nkey == os.environ['NODE_KEY']:
         return "INVALID node key"
 
@@ -78,7 +73,6 @@ def delete_file(toktok, nkey, FILE, DIR=''):
 @app.route("/grey/storage_grey/<nkey>/<toktok>/<FIL>", defaults={'DIR':''})
 @app.route('/grey/storage_grey/<nkey>/<toktok>/<FIL>/<DIR>')
 def grey_file(nkey, toktok, FIL, DIR=''):
-
     if not nkey == os.environ['NODE_KEY']:
         return "INVALID node key"
 
@@ -99,7 +93,6 @@ def grey_file(nkey, toktok, FIL, DIR=''):
 # Must be a tar file
 @app.route("/grey/storage_upload_dir/<nkey>/<toktok>/<DIR>", methods=['POST'])
 def upload_dir(nkey, toktok, DIR):
-
     if not nkey == os.environ['NODE_KEY']:
         return "INVALID node key"
 
@@ -153,7 +146,6 @@ def upload_dir(nkey, toktok, DIR):
 # Deletes a directory
 @app.route("/grey/storage_delete_dir/<nkey>/<toktok>/<DIR>")
 def delete_dir(toktok, nkey, DIR):
-
     if not nkey == os.environ['NODE_KEY']:
         return "INVALID, node key"
 
@@ -172,7 +164,6 @@ def delete_dir(toktok, nkey, DIR):
 @app.route('/grey/storage_grey_dir/<nkey>/<toktok>',defaults={'DIR':''})
 @app.route('/grey/storage_grey_dir/<nkey>/<toktok>/<DIR>')
 def grey_dir(nkey, toktok, DIR=''):
-
     if not nkey == os.environ['NODE_KEY']:
         return "INVALID node key"
 
@@ -200,7 +191,6 @@ def grey_dir(nkey, toktok, DIR=''):
 # Deletes a user directory
 @app.route("/grey/storage_delete_user/<nkey>/<toktok>")
 def delete_user_dir(nkey, toktok):
-
     if not nkey == os.environ['NODE_KEY']:
         return "INVALID, node key"
 

@@ -7,31 +7,23 @@ Implements communication between end user calling greyfish and the other nodes
 
 
 from flask import Flask, request, send_file, jsonify
-import os
-import redis
-import requests
+import os, requests, tarfile, shutil, traceback
 import base_functions as bf
 import mysql.connector as mysql_con
 from werkzeug.utils import secure_filename
-import tarfile, shutil, traceback
-import checksums as ch
 app = Flask(__name__)
 
-
 URL_BASE = os.environ["URL_BASE"]
-REDIS_AUTH = os.environ["REDIS_AUTH"]
-
 GREYFISH_FOLDER = "/greyfish/sandbox/"
 CURDIR = dir_path = os.path.dirname(os.path.realpath(__file__))
+
 #################################
 # USER ACTIONS
 #################################
 
-
 # Creates a user
 @app.route("/grey/create_user", methods=['POST'])
 def create_user():
-
     if not request.is_json:
         return "POST parameters could not be parsed"
 
@@ -97,11 +89,9 @@ def create_user():
     except:
         return "INVALID, Server Error: Could not connect to database"
 
-
 # Deletes an entire user directory
 @app.route("/grey/delete_user", methods=['POST'])
 def delete_user():
-
     if not request.is_json:
         return "POST parameters could not be parsed"
 
@@ -168,8 +158,6 @@ def delete_user():
         traceback.print_exc()
         return "INVALID, Server Error: Could not connect to database"
 
-
-
 #################################
 # CLUSTER ACTIONS
 #################################
@@ -233,8 +221,6 @@ def cluster_addme():
         traceback.print_exc()                     
         return "INVALID, Server Error: Could not connect to database"
 
-
-
 # Removes a storage node from the cluster
 # Does not redistribute user data within the cluster
 @app.route("/grey/cluster/removeme_as_is", methods=['POST'])
@@ -266,8 +252,7 @@ def removeme_as_is():
         nd=row[0]
     cursor.close()
     grey_db.close()
-    
-    
+        
     if nd == None:
         return "Node is not attached to cluster"
 
@@ -284,7 +269,6 @@ def removeme_as_is():
         grey_db.commit()
         cursor.close()
         grey_db.close()
-
         return "Node removed from the cluster"
     except:
         return "INVALID, Server Error: Could not connect to database"
@@ -295,11 +279,9 @@ def removeme_as_is():
 
 # Uploads one file
 # Directories must be separated by ++
-
 @app.route("/grey/upload/<gkey>/<toktok>", methods=['POST'], defaults={'DIR':''})
 @app.route("/grey/upload/<gkey>/<toktok>/<DIR>", methods=['POST'])
 def file_upload(toktok, gkey, DIR=''):
-
     IP_addr = request.environ['REMOTE_ADDR']
     if not bf.valid_key(gkey, toktok):
         bf.failed_login(gkey, IP_addr, toktok, "upload-file")
@@ -367,12 +349,10 @@ def file_upload(toktok, gkey, DIR=''):
     bf.greyfish_log(IP_addr, toktok, "upload", "single file", '/'.join(DIR.split('++')), new_name)
     return req.text
 
-
 # Deletes a file already present in the user
 @app.route('/grey/delete_file/<gkey>/<toktok>/<FILE>',defaults={'DIR':''})
 @app.route('/grey/delete_file/<gkey>/<toktok>/<FILE>/<DIR>')
 def delete_file(toktok, gkey, FILE, DIR=''):
-    
     IP_addr = request.environ['REMOTE_ADDR']
     if not bf.valid_key(gkey, toktok):
         bf.failed_login(gkey, IP_addr, toktok, "delete-file")
@@ -392,57 +372,6 @@ def delete_file(toktok, gkey, FILE, DIR=''):
                                                       
     bf.greyfish_log(IP_addr, toktok, "delete", "single file", '/'.join(DIR.split('++')), str(FILE))
     return req.text
-    #return "File succesfully deleted from Greyfish storage"
- 
-# Returns a file
-@app.route('/grey/grey/<gkey>/<toktok>/<FIL>',defaults={'DIR':''})
-@app.route('/grey/grey/<gkey>/<toktok>/<FIL>/<DIR>')
-def grey_file(gkey, toktok, FIL, DIR=''):
-
-    IP_addr = request.environ['REMOTE_ADDR']
-    if not bf.valid_key(gkey, toktok):
-        bf.failed_login(gkey, IP_addr, toktok, "download-file")
-        return "INVALID key"
-    
-    vmip,nkey = bf.get_file_vm(toktok,FIL,DIR)
-    if vmip == None or nkey == None:
-        return "Unable to locate the file"
-    
-    if DIR=='':
-        req = requests.get("http://"+vmip+":3443"+"/grey/storage_grey/"+nkey+"/"+toktok+"/"+FIL)
-    else:
-        req = requests.get("http://"+vmip+":3443"+"/grey/storage_grey/"+nkey+"/"+toktok+"/"+FIL+"/"+DIR)
-
-    if "INVALID" in req.text:
-        return req.text
-    
-    USER_DIR=GREYFISH_FOLDER+'DIR_'+str(toktok)+'/download/'
-    if os.path.exists(USER_DIR):
-        shutil.rmtree(USER_DIR)
-    os.makedirs(USER_DIR)
-
-    open(USER_DIR+FIL,'wb').write(req.content)
-
-    os.chdir(USER_DIR)
-    checksum = ch.sha256_checksum(FIL)
-    checksumfile = open("checksum.txt","w")
-    checksumfile.write(checksum)
-    checksumfile.close()
-    bf.update_file_checksum(toktok,FIL,vmip,DIR,checksum)
-    
-    if os.path.exists(USER_DIR+'summary.tar.gz'):
-        os.remove(USER_DIR+'summary.tar.gz')
-  
-    tar = tarfile.open("summary.tar.gz", "w:gz")
-    to_be_tarred = [x for x in os.listdir('.') if x != "summary.tar.gz"]
-    for ff in to_be_tarred:
-        tar.add(ff)
-        os.remove(ff)
-    tar.close()
-    os.chdir(CURDIR)
-
-    bf.greyfish_log(IP_addr, toktok, "download", "single file", '/'.join(DIR.split('++')), FIL)
-    return send_file(USER_DIR+"summary.tar.gz")
 
 #################################
 # FOLDER ACTIONS
@@ -452,7 +381,6 @@ def grey_file(gkey, toktok, FIL, DIR=''):
 # Must be a tar file
 @app.route("/grey/upload_dir/<gkey>/<toktok>/<DIR>", methods=['POST'])
 def upload_dir(gkey, toktok, DIR=''):
-
     IP_addr = request.environ['REMOTE_ADDR']
     if not bf.valid_key(gkey, toktok):
         bf.failed_login(gkey, IP_addr, toktok, "upload-dir")
@@ -472,7 +400,6 @@ def upload_dir(gkey, toktok, DIR=''):
     # Avoids empty filenames and those with commas
     if fnam == '':
         return 'INVALID, no file uploaded'
-
     if ',' in fnam:
         return "INVALID, no ',' allowed in filenames"
 
@@ -529,7 +456,6 @@ def upload_dir(gkey, toktok, DIR=''):
     bf.greyfish_log(IP_addr, toktok, "upload", "dir", '/'.join(DIR.split('++')))
     return req.text
 
-
 # Deletes a directory
 @app.route("/grey/delete_dir/<gkey>/<toktok>/<DIR>")
 def delete_dir(toktok, gkey, DIR):
@@ -548,105 +474,5 @@ def delete_dir(toktok, gkey, DIR):
     bf.greyfish_log(IP_addr, toktok, "delete", "single dir", '/'.join(DIR.split('++')))
     return req.text
 
-# Downloads a directory
-# Equivalent to downloading the tar file, since they are both equivalent
-@app.route('/grey/grey_dir/<gkey>/<toktok>',defaults={'DIR':''})
-@app.route('/grey/grey_dir/<gkey>/<toktok>/<DIR>')
-def grey_dir(gkey, toktok, DIR=''):
-
-    IP_addr = request.environ['REMOTE_ADDR']
-    if not bf.valid_key(gkey, toktok):
-        bf.failed_login(gkey, IP_addr, toktok, "download-dir")
-        return "INVALID key"
-
-    USER_DIR=GREYFISH_FOLDER+'DIR_'+str(toktok)+'/download/'
-    if os.path.exists(USER_DIR):
-        shutil.rmtree(USER_DIR)
-    os.makedirs(USER_DIR)
-
-    vmip,nkey=bf.get_folder_vm(toktok,DIR)
-    for i in range(len(vmip)):
-        if DIR=='':
-            req = requests.get("http://"+vmip[i]+":3443"+"/grey/storage_grey_dir/"+nkey[i]+"/"+toktok,stream=True)
-            delete = requests.get("http://"+vmip[i]+":3443/grey/storage_delete_file/"+nkey[i]+"/"+toktok+"/summary.tar.gz")
-        else:
-            req = requests.get("http://"+vmip[i]+":3443"+"/grey/storage_grey_dir/"+nkey[i]+"/"+toktok+"/"+DIR,stream=True)
-            delete = requests.get("http://"+vmip[i]+":3443/grey/storage_delete_file/"+nkey[i]+"/"+toktok+"/summary.tar.gz/"+DIR)
-        if "INVALID" in req.text:
-            continue
-        else:
-            if os.path.exists(USER_DIR+'summary.tar.gz'):
-                os.remove(USER_DIR+'summary.tar.gz')
-
-            with open(USER_DIR+'summary.tar.gz','wb') as fd:
-                for chunk in req.iter_content(chunk_size=128):
-                    fd.write(chunk)
-
-            with tarfile.open(USER_DIR+'summary.tar.gz',"r:gz") as tf:
-                tf.extractall(USER_DIR)
-            os.remove(USER_DIR+'summary.tar.gz')
-
-
-    checksum = ch.sha256_checksum_dir(USER_DIR)
-    bf.update_folder_checksum(toktok,vmip,DIR,checksum)
-    os.chdir(USER_DIR)
-    checksumfile = open("checksum.txt","w")
-    checksumfile.write(checksum)
-    checksumfile.close()
-
-    tar = tarfile.open("summary.tar.gz", "w:gz")
-    to_be_tarred = [x for x in os.listdir('.') if x != "summary.tar.gz"]
-    for ff in to_be_tarred:
-        tar.add(ff)
-        if os.path.isdir(ff):
-            shutil.rmtree(ff)
-        else:
-            os.remove(ff)
-    tar.close()
-    os.chdir(CURDIR)
-    
-    bf.greyfish_log(IP_addr, toktok, "download", "dir", '/'.join(DIR.split('++')))
-    return send_file(USER_DIR+"summary.tar.gz")
-
-@app.route('/grey/grey_dir_json/<gkey>/<toktok>')
-def grey_dir_json(gkey, toktok):
-
-    IP_addr = request.environ['REMOTE_ADDR']
-    if not bf.valid_key(gkey, toktok):
-        bf.failed_login(gkey, IP_addr, toktok, "download-dir")
-        return "INVALID key"
-
-    USER_DIR=GREYFISH_FOLDER+'DIR_'+str(toktok)+'/download'
-    if os.path.exists(USER_DIR):
-        shutil.rmtree(USER_DIR)
-    os.makedirs(USER_DIR)
-
-    vmip,nkey=bf.get_folder_vm(toktok,'')
-    for i in range(len(vmip)):
-        req = requests.get("http://"+vmip[i]+":3443"+"/grey/storage_grey_dir/"+nkey[i]+"/"+toktok,stream=True)
-        delete = requests.get("http://"+vmip[i]+":3443/grey/storage_delete_file/"+nkey[i]+"/"+toktok+"/summary.tar.gz")
-        if "INVALID" in req.text:
-            continue
-        else:
-            if os.path.exists(USER_DIR+'summary.tar.gz'):
-                os.remove(USER_DIR+'summary.tar.gz')
-
-            with open(USER_DIR+'summary.tar.gz','wb') as fd:
-                for chunk in req.iter_content(chunk_size=128):
-                    fd.write(chunk)
-
-            with tarfile.open(USER_DIR+'summary.tar.gz',"r:gz") as tf:
-                tf.extractall(USER_DIR)
-            os.remove(USER_DIR+'summary.tar.gz')
-
-    json = jsonify(bf.structure_in_json(USER_DIR))
-    os.chdir(USER_DIR)
-    for ff in os.listdir('.'):
-        if os.path.isdir(ff):
-            shutil.rmtree(ff)
-        else:
-            os.remove(ff)
-
-    return json
 if __name__ == '__main__':
    app.run()

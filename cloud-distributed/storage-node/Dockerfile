@@ -14,11 +14,10 @@ COPY keyfile.key        /grey/keyfile.key
 COPY setup.sh           /grey/setup.sh
 COPY traffic.py         /grey/traffic.py
 COPY base_functions.py         /grey/base_functions.py
+COPY API_Daemon.sh      /grey/API_Daemon.sh
 
 # Individual key used to attach node or to give it instructions
 ENV NODE_KEY "node1"
-# Similar to that of the manager node
-ENV REDIS_AUTH "redis_auth"
 # Similar to that of the manager node
 ENV orchestra_key "karaoke"
 # Similar to that of the manager node
@@ -40,7 +39,7 @@ ENV MAX_STORAGE "1000000"
 # Installs the necessary packages
 # Bash for convenience
 RUN mkdir -p /greyfish/sandbox &&\
-    pip3 install gunicorn Flask mysql-connector-python redis requests &&\
+    pip3 install gunicorn Flask mysql-connector-python requests &&\
     chmod +x /grey/setup.sh /grey/traffic.py
 
 
