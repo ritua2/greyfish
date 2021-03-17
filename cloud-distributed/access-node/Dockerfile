@@ -47,3 +47,4 @@ RUN apk update && apk add bash curl &&\
     chmod +x /grey/traffic.py /grey/API_Daemon.sh
 
 WORKDIR /greyfish
+CMD tail -F anything

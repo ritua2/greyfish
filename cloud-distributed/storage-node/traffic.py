@@ -7,12 +7,9 @@ Implements communication between end user calling greyfish and the other nodes
 
 
 from flask import Flask, request, send_file
-import os, shutil
-import redis
-import requests
 from werkzeug.utils import secure_filename
+import os, shutil, requests, tarfile, traceback
 import base_functions as bf
-import tarfile, traceback
 
 app = Flask(__name__)
 GREYFISH_FOLDER = "/greyfish/sandbox/"
@@ -83,7 +80,7 @@ def grey_file(nkey, toktok, FIL, DIR=''):
     if str(FIL) not in os.listdir(USER_DIR):
        return 'INVALID, File not available'
 
-    return send_file(USER_DIR+str(FIL), as_attachment=True)
+    return send_file(os.path.join(USER_DIR, str(FIL)), as_attachment=True)
 
 #################################
 # FOLDER ACTIONS
@@ -186,7 +183,7 @@ def grey_dir(nkey, toktok, DIR=''):
 
     os.chdir(CURDIR)
 
-    return send_file(os.path.join(USER_DIR,"summary.tar.gz"))
+    return send_file(os.path.join(USER_DIR,"summary.tar.gz"), as_attachment=True)
 
 # Deletes a user directory
 @app.route("/grey/storage_delete_user/<nkey>/<toktok>")
