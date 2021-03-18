@@ -34,6 +34,9 @@ ENV FILESYSTEM "overlay"
 ENV MAX_STORAGE "1000000"
 # Reserved space for compressed files while downloading
 ENV RESERVED_STORAGE "300000"
+# number of threads to run
+ENV greyfish_threads "4"
+
 
 
 
@@ -41,7 +44,7 @@ ENV RESERVED_STORAGE "300000"
 # Bash for convenience
 RUN mkdir -p /greyfish/sandbox &&\
     pip3 install gunicorn Flask mysql-connector-python requests &&\
-    chmod +x /grey/setup.sh /grey/traffic.py
+    chmod +x /grey/setup.sh /grey/traffic.py /grey/API_Daemon.sh
 
 
 WORKDIR /greyfish
