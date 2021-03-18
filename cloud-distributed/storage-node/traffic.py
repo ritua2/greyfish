@@ -88,6 +88,7 @@ def grey_file(nkey, toktok, FIL, DIR=''):
 
 # Uploads one directory, it the directory already exists, then it deletes it and uploads the new contents
 # Must be a tar file
+@app.route("/grey/storage_upload_dir/<nkey>/<toktok>", defaults={'DIR':''}, methods=['POST'])
 @app.route("/grey/storage_upload_dir/<nkey>/<toktok>/<DIR>", methods=['POST'])
 def upload_dir(nkey, toktok, DIR):
     if not nkey == os.environ['NODE_KEY']:
@@ -115,10 +116,8 @@ def upload_dir(nkey, toktok, DIR):
     ip = res.text
 
     try:
-        if os.path.exists(GREYFISH_FOLDER+'DIR_'+str(toktok)+'/'+'/'.join(DIR.split('++'))):
-            shutil.rmtree(GREYFISH_FOLDER+'DIR_'+str(toktok)+'/'+'/'.join(DIR.split('++')))
-
-        os.makedirs(GREYFISH_FOLDER+'DIR_'+str(toktok)+'/'+'/'.join(DIR.split('++')))
+        if not os.path.exists(GREYFISH_FOLDER+'DIR_'+str(toktok)+'/'+'/'.join(DIR.split('++'))):
+            os.makedirs(GREYFISH_FOLDER+'DIR_'+str(toktok)+'/'+'/'.join(DIR.split('++')))
         file.save(os.path.join(GREYFISH_FOLDER+'DIR_'+str(toktok)+'/'+'/'.join(DIR.split('++')), new_name))
         tar = tarfile.open(GREYFISH_FOLDER+'DIR_'+str(toktok)+'/'+'/'.join(DIR.split('++'))+'/'+new_name)
         tar.extractall(GREYFISH_FOLDER+'DIR_'+str(toktok)+'/'+'/'.join(DIR.split('++')))
@@ -129,8 +128,7 @@ def upload_dir(nkey, toktok, DIR):
         return "ERROR: Could not open tar file" 
 
     try:
-        for root, dirs, files in os.walk(GREYFISH_FOLDER+'DIR_'+str(toktok)+'/'+'/'.join(DIR.split('++'))):
-            print('dir: ','++'.join(root.replace(GREYFISH_FOLDER+'DIR_'+str(toktok)+'/','').split('/')))
+        for root, dirs, files in os.walk(GREYFISH_FOLDER+'DIR_'+str(toktok)+'/'):
             bf.add_dir(ip,toktok,'++'.join(root.replace(GREYFISH_FOLDER+'DIR_'+str(toktok)+'/','').split('/')))
             for file in files:
                 bf.add_file(ip,toktok,'++'.join(root.replace(GREYFISH_FOLDER+'DIR_'+str(toktok)+'/','').split('/')),file)
@@ -182,7 +180,6 @@ def grey_dir(nkey, toktok, DIR=''):
     tar.close()
 
     os.chdir(CURDIR)
-
     return send_file(os.path.join(USER_DIR,"summary.tar.gz"), as_attachment=True)
 
 # Deletes a user directory

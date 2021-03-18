@@ -304,12 +304,20 @@ def file_upload(toktok, gkey, DIR=''):
     if ',' in fnam:
        return "INVALID, no ',' allowed in filenames"
 
+    new_name = secure_filename(fnam)
+    filevm,vmkey=bf.get_file_vm(toktok,new_name,DIR)
+    if filevm != None and vmkey != None:
+        if DIR=='':
+            delete = requests.get("http://"+filevm+":3443/grey/storage_delete_file/"+vmkey+"/"+toktok+"/"+new_name)
+        else:
+            delete = requests.get("http://"+filevm+":3443/grey/storage_delete_file/"+vmkey+"/"+toktok+"/"+new_name+"/"+DIR)
+
+
     #save file locally
     UPLOAD_DIR = GREYFISH_FOLDER+'DIR_'+str(toktok)+'/upload'   
     if os.path.exists(UPLOAD_DIR):
         shutil.rmtree(UPLOAD_DIR)
     os.makedirs(UPLOAD_DIR)
-    new_name = secure_filename(fnam)
     file.save(os.path.join(UPLOAD_DIR, new_name))
     
     # find VM that can fit the file
@@ -377,8 +385,9 @@ def delete_file(toktok, gkey, FILE, DIR=''):
 # FOLDER ACTIONS
 #################################
 
-# Uploads one directory, it the directory already exists, then it deletes it and uploads the new contents
+# Uploads one directory, if the directory already exist then exits the program else uploads the contents.
 # Must be a tar file
+@app.route("/grey/upload_dir/<gkey>/<toktok>", defaults={'DIR':''},methods=['POST'])
 @app.route("/grey/upload_dir/<gkey>/<toktok>/<DIR>", methods=['POST'])
 def upload_dir(gkey, toktok, DIR=''):
     IP_addr = request.environ['REMOTE_ADDR']
@@ -390,10 +399,11 @@ def upload_dir(gkey, toktok, DIR=''):
     if not bf.valid_user(toktok):
         bf.failed_login(gkey, IP_addr, toktok, "upload-file")
         return "INVALID user"
-
-    dir_vm,_=bf.get_folder_vm(toktok,'++'.join(DIR.split('++')[:-1]))
-    if not len(dir_vm):
-        return "INVALID Directory does not exist"
+    
+    parent_dir_vm,_=bf.get_folder_vm(toktok,DIR)
+    #parent_dir_vm,_=bf.get_folder_vm(toktok,'++'.join(DIR.split('++')[:-1]))
+    #if not len(parent_dir_vm):
+    #    return "INVALID Directory does not exist"
 
     file = request.files['file']
     fnam = file.filename
@@ -420,19 +430,33 @@ def upload_dir(gkey, toktok, DIR=''):
         tar = tarfile.open(UPLOAD_DIR+'/'+new_name)
         tar.extractall(UPLOAD_DIR)
         tar.close()
-        dirsize = bf.get_dir_size(UPLOAD_DIR+'/'+new_name.split('.')[0])
+        dirnames=[x for x in os.listdir(UPLOAD_DIR) if x != new_name]
+        if len(dirnames) != 1 or not os.path.isdir(os.path.join(UPLOAD_DIR,dirnames[0])):
+            shutil.rmtree(UPLOAD_DIR)
+            return "Only one directory can be uploaded at a time"
+
+        if DIR=='':
+            dir_vm,_=bf.get_folder_vm(toktok,dirnames[0])
+        else:
+            dir_vm,_=bf.get_folder_vm(toktok,DIR+'++'+dirnames[0])
+        if len(dir_vm)>0:
+            shutil.rmtree(UPLOAD_DIR)
+            return "Directory exists. Try deleting or replacing the directory"
+
+        dirsize = bf.get_dir_size(os.path.join(UPLOAD_DIR,dirnames[0]))
         vmip, nkey = bf.get_available_vms(dirsize)
     except:
+        traceback.print_exc()
+        shutil.rmtree(UPLOAD_DIR)
         return "Could not open tar file" 
 
     if len(vmip)==0 or len(nkey)==0:
-        os.remove(os.path.join(UPLOAD_DIR, new_name))
-        shutil.rmtree(UPLOAD_DIR+'/'+new_name.split('.')[0])
+        shutil.rmtree(UPLOAD_DIR)
         return "Can't find the VM to fit the directory"
 
     ip=key=None
     for i in range(len(vmip)):
-        if vmip[i] in dir_vm:
+        if vmip[i] in parent_dir_vm:
             ip=vmip[i]
             key=nkey[i]
             break
@@ -443,12 +467,112 @@ def upload_dir(gkey, toktok, DIR=''):
         key=nkey[0]
     
     files = {'file': open(os.path.join(UPLOAD_DIR, new_name), 'rb')}
-    req = requests.post("http://"+ip+":3443"+"/grey/storage_upload_dir/"+key+"/"+toktok+"/"+DIR, files=files)
+    if DIR=='':
+        req = requests.post("http://"+ip+":3443"+"/grey/storage_upload_dir/"+key+"/"+toktok, files=files)
+    else:
+        req = requests.post("http://"+ip+":3443"+"/grey/storage_upload_dir/"+key+"/"+toktok+"/"+DIR, files=files)
 
     # remove the file from local storage    
-    if os.path.exists(os.path.join(UPLOAD_DIR, new_name)):
-        os.remove(os.path.join(UPLOAD_DIR, new_name))
-        shutil.rmtree(UPLOAD_DIR+'/'+new_name.split('.')[0])
+    if os.path.exists(UPLOAD_DIR):
+        shutil.rmtree(UPLOAD_DIR)
+
+    if "INVALID" in req.text or "ERROR" in req.text:
+        return req.text
+
+    #bf.greyfish_log(IP_addr, toktok, "upload", "dir", '/'.join(DIR.split('++')))
+    return req.text
+
+# Uploads one directory, it the directory already exists, then it deletes it and uploads the new contents
+# Must be a tar file
+@app.route("/grey/upload_replace_dir/<gkey>/<toktok>", defaults={'DIR':''},methods=['POST'])
+@app.route("/grey/upload_replace_dir/<gkey>/<toktok>/<DIR>", methods=['POST'])
+def upload_replace_dir(gkey, toktok, DIR=''):
+    IP_addr = request.environ['REMOTE_ADDR']
+    if not bf.valid_key(gkey, toktok):
+        #bf.failed_login(gkey, IP_addr, toktok, "upload-dir")
+        return "INVALID key"
+
+    # user must be added to the database beforehand
+    if not bf.valid_user(toktok):
+        #bf.failed_login(gkey, IP_addr, toktok, "upload-file")
+        return "INVALID user"
+    
+    parent_dir_vm,_=bf.get_folder_vm(toktok,DIR)
+    #parent_dir_vm,_=bf.get_folder_vm(toktok,'++'.join(DIR.split('++')[:-1]))
+    #if not len(parent_dir_vm):
+    #    return "INVALID Directory does not exist"
+
+    file = request.files['file']
+    fnam = file.filename
+    # Avoids empty filenames and those with commas
+    if fnam == '':
+        return 'INVALID, no file uploaded'
+    if ',' in fnam:
+        return "INVALID, no ',' allowed in filenames"
+
+    # Untars the file, makes a directory if it does not exist
+    if ('.tar.gz' not in fnam) and ('.tgz' not in fnam):
+        return 'ERROR: Compression file not accepted, file must be .tgz or .tar.gz'
+    
+    #save file locally
+    UPLOAD_DIR = GREYFISH_FOLDER+'DIR_'+str(toktok)+'/upload'
+    if os.path.exists(UPLOAD_DIR):
+        shutil.rmtree(UPLOAD_DIR)
+    os.makedirs(UPLOAD_DIR)
+    new_name = secure_filename(fnam)
+    vmip=nkey=dirsize=None
+
+    try:
+        file.save(os.path.join(UPLOAD_DIR, new_name))
+        tar = tarfile.open(UPLOAD_DIR+'/'+new_name)
+        tar.extractall(UPLOAD_DIR)
+        tar.close()
+        dirnames=[x for x in os.listdir(UPLOAD_DIR) if x != new_name]
+        if len(dirnames) != 1 or not os.path.isdir(os.path.join(UPLOAD_DIR,dirnames[0])):
+            shutil.rmtree(UPLOAD_DIR)
+            return "Only one directory can be uploaded at a time"
+
+        if DIR=='':
+            dir_vm,_=bf.get_folder_vm(toktok,dirnames[0])
+        else:
+            dir_vm,_=bf.get_folder_vm(toktok,DIR+'++'+dirnames[0])
+        if len(dir_vm)>0:
+            if DIR=='':
+                delete = requests.get("http://"+URL_BASE+":2443/grey/delete_dir/"+gkey+"/"+toktok+"/"+dirnames[0])
+            else:
+                delete = requests.get("http://"+URL_BASE+":2443/grey/delete_dir/"+gkey+"/"+toktok+"/"+DIR+'++'+dirnames[0])
+        dirsize = bf.get_dir_size(os.path.join(UPLOAD_DIR,dirnames[0]))
+        vmip, nkey = bf.get_available_vms(dirsize)
+    except:
+        traceback.print_exc()
+        shutil.rmtree(UPLOAD_DIR)
+        return "Could not open tar file" 
+
+    if len(vmip)==0 or len(nkey)==0:
+        shutil.rmtree(UPLOAD_DIR)
+        return "Can't find the VM to fit the directory"
+
+    ip=key=None
+    for i in range(len(vmip)):
+        if vmip[i] in parent_dir_vm:
+            ip=vmip[i]
+            key=nkey[i]
+            break
+        else:
+            continue
+    if ip==None or key==None:
+        ip=vmip[0]
+        key=nkey[0]
+    
+    files = {'file': open(os.path.join(UPLOAD_DIR, new_name), 'rb')}
+    if DIR=='':
+        req = requests.post("http://"+ip+":3443"+"/grey/storage_upload_dir/"+key+"/"+toktok, files=files)
+    else:
+        req = requests.post("http://"+ip+":3443"+"/grey/storage_upload_dir/"+key+"/"+toktok+"/"+DIR, files=files)
+
+    # remove the file from local storage    
+    if os.path.exists(UPLOAD_DIR):
+        shutil.rmtree(UPLOAD_DIR)
 
     if "INVALID" in req.text or "ERROR" in req.text:
         return req.text
