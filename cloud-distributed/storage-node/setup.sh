@@ -78,14 +78,17 @@ fi
 
 printf "\nNo errors with environmental variables\n"
 
-ALLOWED_STORAGE="$(($MAX_STORAGE-$RESERVED_STORAGE))"
+# database stores everything in bytes
+ALLOWED_STORAGE="$(($MAX_STORAGE - $RESERVED_STORAGE))"
+mul=1000
+ALLOWED_STORAGE_BYTES="$(($ALLOWED_STORAGE * $mul))"
 
 # Adds node to cluster
 #curl -X POST -H "Content-Type: application/json"\
-#    -d '{"orch_key":"'"$orchestra_key"'", "MAX_STORAGE":"'"$ALLOWED_STORAGE"'", "NODE_KEY":"'"$NODE_KEY"'"}' \
+#    -d '{"orch_key":"'"$orchestra_key"'", "MAX_STORAGE":"'"$ALLOWED_STORAGE_BYTES"'", "NODE_KEY":"'"$NODE_KEY"'"}' \
 #    --insecure https://"$URL_BASE":2443/grey/cluster/addme
 curl -X POST -H "Content-Type: application/json"\
-    -d '{"orch_key":"'"$orchestra_key"'", "MAX_STORAGE":"'"$ALLOWED_STORAGE"'", "NODE_KEY":"'"$NODE_KEY"'"}' \
+    -d '{"orch_key":"'"$orchestra_key"'", "MAX_STORAGE":"'"$ALLOWED_STORAGE_BYTES"'", "NODE_KEY":"'"$NODE_KEY"'"}' \
     --insecure http://"$URL_BASE":2443/grey/cluster/addme
 
 
