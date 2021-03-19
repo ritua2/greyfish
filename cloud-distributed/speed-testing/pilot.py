@@ -180,10 +180,10 @@ def view_user_dir(userid=None,gkey=None):
 #####################
 # IMPORTANT
 #####################
-
+# Update IP address variables with the IP address of manager-node and access-node from the cluster
+# User must be added to the cluster to manage data on the cloud. So, add user first using add_user function from the list of storage functions listed after the variables.
 # All the cloud based paths are seperated by '++' rather than '/' so if you want to define a path like dir1/dir2/dir3, it will be dir1++dir2++dir3 for cloud path. 
 # Notes have been made next to each variable to guide with the path separator.
-# User must be added to the cluster to manage data on the cloud. So, add user first using add_user function from the list of storage functions listed after the variables.
 # Before using any function, update the variables passed as function arguments from below list.
 
 #####################################
@@ -191,16 +191,16 @@ def view_user_dir(userid=None,gkey=None):
 #####################################
 
 # id of user to perform operations
-username="saumya"  
+username="username"  
 
 # greyfish key to access the cluster
 greykey="clouddistributedgreyfish"
 
 # IP of manager-node
-server_IP = "129.114.17.251"
+server_IP = ""
 
 # IP of access-node
-download_IP = "149.165.157.194"
+download_IP = ""
 
 # Entire path of the file on local system including it's name
 upload_filename="/root/greyfish/cloud-distributed/speed-testing/essay_cpy.txt" # use /
