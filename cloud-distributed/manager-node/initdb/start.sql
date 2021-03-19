@@ -36,8 +36,8 @@ DROP TABLE IF EXISTS file;
 CREATE TABLE file (
 	ip 			varchar(16) 	NOT NULL,
 	user_id		varchar(24)		NOT NULL,
-	id			varchar(16)		NOT NULL,
-	directory	varchar(30)		NOT NULL,
+	id			varchar(50)		NOT NULL,
+	directory	varchar(500)	NOT NULL,
 	is_dir		tinyint(1)		DEFAULT '0',
 	checksum	varchar(64)		DEFAULT NULL,
 	PRIMARY KEY (`ip`,`user_id`,`id`,`directory`)

@@ -42,7 +42,14 @@ def result_upload(nkey,toktok,DIR=''):
     file.save(os.path.join(GREYFISH_FOLDER+'DIR_'+str(toktok)+'/'+'/'.join(DIR.split('++')), new_name))
     res = requests.get("http://"+URL_BASE+":2443/grey/cluster/whoami")
     ip = res.text
-    bf.add_file(ip,toktok,DIR,new_name)
+    try:
+        for root, dirs, files in os.walk(GREYFISH_FOLDER+'DIR_'+str(toktok)+'/'):
+            bf.add_dir(ip,toktok,'++'.join(root.replace(GREYFISH_FOLDER+'DIR_'+str(toktok)+'/','').split('/')))
+            for file in files:
+                bf.add_file(ip,toktok,'++'.join(root.replace(GREYFISH_FOLDER+'DIR_'+str(toktok)+'/','').split('/')),file)
+    except:
+        traceback.print_exc()
+        return "ERROR: can't update database"
     bf.update_node_space(ip)
     return 'File succesfully uploaded to Greyfish'
 

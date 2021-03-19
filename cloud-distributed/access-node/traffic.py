@@ -32,7 +32,7 @@ def grey_file(gkey, toktok, FIL, DIR=''):
     
     vmip,nkey = bf.get_file_vm(toktok,FIL,DIR)
     if vmip == None or nkey == None:
-        return "Unable to locate the file"
+        return "INVALID, Unable to locate the file"
     
     if DIR=='':
         req = requests.get("http://"+vmip+":3443"+"/grey/storage_grey/"+nkey+"/"+toktok+"/"+FIL)
@@ -91,6 +91,8 @@ def grey_dir(gkey, toktok, DIR=''):
     os.makedirs(USER_DIR)
 
     vmip,nkey=bf.get_folder_vm(toktok,DIR)
+    if len(vmip)==0:
+        return "INVALID, Unable to locate the directory"
     for i in range(len(vmip)):
         if DIR=='':
             req = requests.get("http://"+vmip[i]+":3443"+"/grey/storage_grey_dir/"+nkey[i]+"/"+toktok,stream=True)
@@ -147,7 +149,7 @@ def grey_dir_json(gkey, toktok):
         bf.failed_login(gkey, IP_addr, toktok, "download-dir")
         return "INVALID key"
 
-    USER_DIR=GREYFISH_FOLDER+'DIR_'+str(toktok)+'/download'
+    USER_DIR=GREYFISH_FOLDER+'DIR_'+str(toktok)+'/home'
     if os.path.exists(USER_DIR):
         shutil.rmtree(USER_DIR)
     os.makedirs(USER_DIR)

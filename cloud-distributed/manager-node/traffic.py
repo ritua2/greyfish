@@ -293,8 +293,8 @@ def file_upload(toktok, gkey, DIR=''):
         return "INVALID user"
 
     dir_vm,_=bf.get_folder_vm(toktok,DIR)
-    if not len(dir_vm):
-        return "INVALID Directory does not exist"
+    #if not len(dir_vm):
+     #   return "INVALID Directory does not exist"
 
     file = request.files['file']
     fnam = file.filename
