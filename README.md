@@ -1,10 +1,11 @@
 ### Portable, transferrable cloud storage
 
-Greyfish is an out-of-the-box, simple cloud-based filesystem. It can be useful for storing files and directories for different users of the web applications in a shared space. All the files will remain protected and visible only to the admins. The data is kept safe and portable in a docker container.
+Greyfish is a simple, out-of-the-box software for provisioning a multi-user, containerized filesystem in the cloud. If you are building a web-application for which you need to support multiple users, having personal accounts on a shared storage, then Greyfish can be useful in this scenario. It helps in creating a data "vault" with appropriate access privileges for the users. It provides the functionality for file-management - file/folder upload, file/folder download, and data persistence. The latest release of Greyfish supports distributed storage across multiple Virtual Machines (VMs) for scalability and load-balancing. As it is container-based, it can help in creating a portable service that can be started on or moved to any VM/system that supports Docker.
 
 Powered with a WSGI server, Greyfish is multi-threaded. Data stored in Greyfish can be easily monitored using grafana or any other app.  
 
-Greyfish allows single use tokens for specifc actions. These tokens are stored within an attached redis server on port 6379, and can be accessed, created, or deleted from  another server or container within the same machine.
+
+Greyfish allows single use tokens for specifc actions. These tokens are stored within a MySQL table, and can be accessed, created, or deleted from  another server or container within the same machine.
 
 
 --------------
