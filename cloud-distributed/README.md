@@ -25,10 +25,12 @@ vi .env
 vi initdb/start.sql
 ```
 
+
 Start manager node:
 ```bash
 docker-compose up -d
 ```
+
 
 Enter the manager node docker container and activate the APIs:  
 
@@ -44,6 +46,7 @@ cd /grey
 ./API_Daemon.sh -down
 ```
 
+
 To rebuild greyfish after changes in the manager node code:
 ```bash
 # Bring down the containers
@@ -53,9 +56,11 @@ docker-compose up -d --build
 ```
 
 
+
 * **Access node**
 
 Note: Can only be completed after installing the manager node and with the APIs and database containers being active
+
 
 Pull this directory:
 ```bash
@@ -65,16 +70,19 @@ git checkout distributed
 cd cloud-distributed/access-node
 ```
 
+
 Setup a access node, using the same *orchestra_key*, *greyfish_key*,  *Mysql Credentials*, *INFLUX Credentials* and *URL_BASE* environmental variables as the manager node. All the environmental variables are described in the [access node Dockerfile](./access-node/Dockerfile). Build the image by doing:
 ```bash
 docker build -t greyfish/access-node:latest .
 ```
 
-After building the image, activate the access node by running the container as follows (environmental variables defined below):
+
+After building the image, activate the access node by running the container as follows:
 ```bash
 # Start container
 docker run --name accessnode_greyfish_1 -d -p 3443:3443 greyfish/access-node:latest
 ```
+
 
 Enter the access node docker container and activate the APIs:  
 ```bash
@@ -86,10 +94,13 @@ cd /grey
 # To deactivate APIs(Ignore this command if setting up the access node)
 ./API_Daemon.sh -down
 ```
+Note: deactivating the APIs will not change or delete any data, it will simply no longer be able to accept communications from outside.
+
 
 * **Storage node**
 
 Note: Can only be completed after installing the manager node & access node with the APIs and database containers being active
+
 
 Pull this directory:
 ```bash
@@ -99,7 +110,8 @@ git checkout distributed
 cd cloud-distributed/storage-node
 ```
 
-Setup a storage node, using the same *orchestra_key*, *Mysql Credentials* and *URL_BASE* environmental variables as the manager node. Other environmental variables defined below:
+
+Setup a storage node, using the same *orchestra_key*, *Mysql Credentials* and *URL_BASE* environmental variables as the manager node. Other environmental variables are defined below:
 * NODE_KEY: Individual key associated with each node
 * FILESYSTEM: Filesystem where all data will stored. 'overlay', by default.
 * MAX_STORAGE: Maximum total storage allowed for users in KB, must be a positive integer
@@ -109,15 +121,17 @@ All the environmental variables are described in the [storage node Dockerfile](.
 ```bash
 docker build -t greyfish/storage-node:latest .
 ```
-Install the storage nodes following the instructions above after the manager node has been setup, then run the container as follows (environmental variables defined below):
+
+
+After building the image, activate the storage node by running the container as follows:
 
 ```bash
 # Start container
 docker run --name storagenode_greyfish_1 -d -p 3443:3443 greyfish/storage-node:latest
 ```
 
-Enter the access node docker container and activate the APIs:  
 
+Enter the access node docker container and activate the APIs:  
 ```bash
 # Enter container
 docker exec -it storagenode_greyfish_1 bash
@@ -127,7 +141,6 @@ cd /grey
 # To deactivate APIs(Ignore this command if setting up the storage node)
 ./API_Daemon.sh -down
 ```
-Note: deactivating the APIs will not change or delete any data, it will simply no longer be able to accept communications from outside.
 
 
 #### Data Persistance (distributed)
@@ -136,12 +149,12 @@ Note: deactivating the APIs will not change or delete any data, it will simply n
 
 #### Usage (distributed)
 
-The Greyfish APIs can be called from any system as long as the greyfish key is known. To simplify the usage of the greyfish a python script has been created which can run on any system which ha python installed with following packages:
+The Greyfish APIs can be called from any system as long as the greyfish key is known. To simplify the usage of the greyfish a python script has been created which can run on any system which has python installed with following packages:
 * requests
 * tarfile
 
-To access this script
-Pull this directory:
+
+To access this script pull this directory:
 ```bash
 git clone https://github.com/ritua2/greyfish.git
 cd greyfish
@@ -150,7 +163,7 @@ cd cloud-distributed
 vi pilot.py
 ```
 
-Most of the instruction on usage of the script are defined inside script as comments. A video has been recorded to demonstarte the usage of the script. 
+The instructions on the usage of the script are defined inside script as comments. Also, a video has been recorded to demonstarte the usage of the script. 
 Link to the video: https://youtu.be/LG430D0IpeU
 
 --------------
