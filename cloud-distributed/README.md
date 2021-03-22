@@ -2,7 +2,162 @@
 
 --------------
 
+At least, three machines are required for the installation of the distributed version of greyfish. There are three types of nodes:
+* Manager node
+* Access node
+* Storage node
+
 #### Installation (distributed)
+
+* **Manager node**
+
+Pull this directory and modify environmental variables:
+```bash
+git clone https://github.com/ritua2/greyfish.git
+cd greyfish
+git checkout distributed
+cd cloud-distributed/manager-node
+
+# Change the greyfish, mysql, InfluxDB credentials and other environmental variables
+vi .env
+
+# If mysql default credentials are updated in .env file, make respective changes in the start.sql file
+vi initdb/start.sql
+```
+
+Start manager node:
+```bash
+docker-compose up -d
+```
+
+Enter the manager node docker container and activate the APIs:  
+
+```bash
+# Enter container
+docker exec -it managernode_greyfish_1 bash
+cd /grey
+# Start the needed databases and assign permission (APIs will not be started)
+/grey/setup.sh
+# Activate APIs(change the number of threads if needed, standard is 4)
+./API_Daemon.sh -up
+# To deactivate APIs(Ignore this command if setting up the manager node)
+./API_Daemon.sh -down
+```
+
+To rebuild greyfish after changes in the manager node code:
+```bash
+# Bring down the containers
+docker-compose down
+# Build and start containers
+docker-compose up -d --build
+```
+
+
+* **Access node**
+
+Note: Can only be completed after installing the manager node and with the APIs and database containers being active
+
+Pull this directory:
+```bash
+git clone https://github.com/ritua2/greyfish.git
+cd greyfish
+git checkout distributed
+cd cloud-distributed/access-node
+```
+
+Setup a access node, using the same *orchestra_key*, *greyfish_key*,  *Mysql Credentials*, *INFLUX Credentials* and *URL_BASE* environmental variables as the manager node. All the environmental variables are described in the [access node Dockerfile](./access-node/Dockerfile). Build the image by doing:
+```bash
+docker build -t greyfish/access-node:latest .
+```
+
+After building the image, activate the access node by running the container as follows (environmental variables defined below):
+```bash
+# Start container
+docker run --name accessnode_greyfish_1 -d -p 3443:3443 greyfish/access-node:latest
+```
+
+Enter the access node docker container and activate the APIs:  
+```bash
+# Enter container
+docker exec -it accessnode_greyfish_1 bash
+cd /grey
+# Activate APIs(change the number of threads if needed, standard is 4)
+./API_Daemon.sh -up
+# To deactivate APIs(Ignore this command if setting up the access node)
+./API_Daemon.sh -down
+```
+
+* **Storage node**
+
+Note: Can only be completed after installing the manager node & access node with the APIs and database containers being active
+
+Pull this directory:
+```bash
+git clone https://github.com/ritua2/greyfish.git
+cd greyfish
+git checkout distributed
+cd cloud-distributed/storage-node
+```
+
+Setup a storage node, using the same *orchestra_key*, *Mysql Credentials* and *URL_BASE* environmental variables as the manager node. Other environmental variables defined below:
+* NODE_KEY: Individual key associated with each node
+* FILESYSTEM: Filesystem where all data will stored. 'overlay', by default.
+* MAX_STORAGE: Maximum total storage allowed for users in KB, must be a positive integer
+* RESERVED_STORAGE: Reserved storage allowed for the compressed files for downloads in KB apart from MAX_STORAGE, must be a positive integer and less than MAM_STORAGE((1/3) * MAX_STORAGE recommended)
+
+All the environmental variables are described in the [storage node Dockerfile](./storage-node/Dockerfile). Build the image by doing:
+```bash
+docker build -t greyfish/storage-node:latest .
+```
+Install the storage nodes following the instructions above after the manager node has been setup, then run the container as follows (environmental variables defined below):
+
+```bash
+# Start container
+docker run --name storagenode_greyfish_1 -d -p 3443:3443 greyfish/storage-node:latest
+```
+
+Enter the access node docker container and activate the APIs:  
+
+```bash
+# Enter container
+docker exec -it storagenode_greyfish_1 bash
+cd /grey
+# Activate APIs(change the number of threads if needed, standard is 4)
+./API_Daemon.sh -up
+# To deactivate APIs(Ignore this command if setting up the storage node)
+./API_Daemon.sh -down
+```
+Note: deactivating the APIs will not change or delete any data, it will simply no longer be able to accept communications from outside.
+
+
+#### Data Persistance (distributed)
+
+
+
+#### Usage (distributed)
+
+The Greyfish APIs can be called from any system as long as the greyfish key is known. To simplify the usage of the greyfish a python script has been created which can run on any system which ha python installed with following packages:
+* requests
+* tarfile
+
+To access this script
+Pull this directory:
+```bash
+git clone https://github.com/ritua2/greyfish.git
+cd greyfish
+git checkout distributed
+cd cloud-distributed
+vi pilot.py
+```
+
+Most of the instruction on usage of the script are defined inside script as comments. A video has been recorded to demonstarte the usage of the script. 
+Link to the video: https://youtu.be/LG430D0IpeU
+
+--------------
+
+--------------
+
+#### Installation of secure version (distributed) - CURRENTLY IN PROGRESS, WILL BE RELEASED SOON
 
 * **Manager node**
 
@@ -128,6 +283,7 @@ curl -X POST -H "Content-Type: application/json"\
     -d '{"orch_key":"karaoke", "node_IP":"111.111.11.11", "NODE_KEY":"node1"}' \
     --insecure https://"$SERVER_IP":2443/grey/cluster/removeme_as_is
 ```
+
 
 
 #### Acknowledgements
