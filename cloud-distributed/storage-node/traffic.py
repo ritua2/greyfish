@@ -40,7 +40,7 @@ def result_upload(nkey,toktok,DIR=''):
     if not os.path.exists(GREYFISH_FOLDER+'DIR_'+str(toktok)+'/'+'/'.join(DIR.split('++'))):
         os.makedirs(GREYFISH_FOLDER+'DIR_'+str(toktok)+'/'+'/'.join(DIR.split('++')))
     file.save(os.path.join(GREYFISH_FOLDER+'DIR_'+str(toktok)+'/'+'/'.join(DIR.split('++')), new_name))
-    res = requests.get("http://"+URL_BASE+":2443/grey/cluster/whoami")
+    res = requests.get("https://"+URL_BASE+":2443/grey/cluster/whoami", verify=False)
     ip = res.text
     try:
         for root, dirs, files in os.walk(GREYFISH_FOLDER+'DIR_'+str(toktok)+'/'):
@@ -64,7 +64,7 @@ def delete_file(toktok, nkey, FILE, DIR=''):
        return 'INVALID, User directory does not exist'
 
     try:
-        res = requests.get("http://"+URL_BASE+":2443/grey/cluster/whoami")
+        res = requests.get("https://"+URL_BASE+":2443/grey/cluster/whoami", verify=False)
         ip = res.text
         bf.remove_file(ip,toktok,DIR,FILE)
         os.remove(GREYFISH_FOLDER+'DIR_'+str(toktok)+'/'+'/'.join(DIR.split('++'))+'/'+str(FILE))
@@ -119,7 +119,7 @@ def upload_dir(nkey, toktok, DIR):
         return 'ERROR: Compression file not accepted, file must be .tgz or .tar.gz'
 
     new_name = secure_filename(fnam)
-    res = requests.get("http://"+URL_BASE+":2443/grey/cluster/whoami")
+    res = requests.get("https://"+URL_BASE+":2443/grey/cluster/whoami", verify=False)
     ip = res.text
 
     try:
@@ -152,7 +152,7 @@ def delete_dir(toktok, nkey, DIR):
         return "INVALID, node key"
 
     try:        
-        res = requests.get("http://"+URL_BASE+":2443/grey/cluster/whoami")
+        res = requests.get("https://"+URL_BASE+":2443/grey/cluster/whoami", verify=False)
         ip = res.text
         bf.remove_dir(ip,toktok,DIR)
         shutil.rmtree(GREYFISH_FOLDER+'DIR_'+str(toktok)+'/'+'/'.join(DIR.split('++'))+'/')
@@ -196,7 +196,7 @@ def delete_user_dir(nkey, toktok):
         return "INVALID, node key"
 
     try:
-        res = requests.get("http://"+URL_BASE+":2443/grey/cluster/whoami")
+        res = requests.get("https://"+URL_BASE+":2443/grey/cluster/whoami", verify=False)
         ip = res.text
         shutil.rmtree(GREYFISH_FOLDER+'DIR_'+str(toktok))
         bf.update_node_space(ip)

@@ -13,8 +13,8 @@ COPY API_Daemon.sh      /grey/API_Daemon.sh
 COPY base_functions.py  /grey/base_functions.py
 COPY traffic.py         /grey/traffic.py
 COPY setup.sh           /grey/setup.sh
-#COPY certfile.crt       /grey/certfile.crt
-#COPY keyfile.key        /grey/keyfile.key
+COPY certfile.crt       /grey/certfile.crt
+COPY keyfile.key        /grey/keyfile.key
 
 
 # Installs the necessary packages

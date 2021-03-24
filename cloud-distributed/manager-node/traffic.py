@@ -147,7 +147,7 @@ def delete_user():
             cursor.execute("select node_key from node where ip=%s",(nodes[i],))
             for row in cursor:
                 key=row[0]
-            req = requests.get("http://"+nodes[i]+":3443"+"/grey/storage_delete_user/"+key+"/"+toktok)
+            req = requests.get("https://"+nodes[i]+":3443"+"/grey/storage_delete_user/"+key+"/"+toktok, verify=False)
             cursor.execute("delete from file where ip=%s and user_id=%s",(nodes[i],toktok))
         grey_db.commit()
         cursor.close()
@@ -308,9 +308,9 @@ def file_upload(toktok, gkey, DIR=''):
     filevm,vmkey=bf.get_file_vm(toktok,new_name,DIR)
     if filevm != None and vmkey != None:
         if DIR=='':
-            delete = requests.get("http://"+filevm+":3443/grey/storage_delete_file/"+vmkey+"/"+toktok+"/"+new_name)
+            delete = requests.get("https://"+filevm+":3443/grey/storage_delete_file/"+vmkey+"/"+toktok+"/"+new_name, verify=False)
         else:
-            delete = requests.get("http://"+filevm+":3443/grey/storage_delete_file/"+vmkey+"/"+toktok+"/"+new_name+"/"+DIR)
+            delete = requests.get("https://"+filevm+":3443/grey/storage_delete_file/"+vmkey+"/"+toktok+"/"+new_name+"/"+DIR, verify=False)
 
 
     #save file locally
@@ -343,9 +343,9 @@ def file_upload(toktok, gkey, DIR=''):
     # upload the file to the first available VM
     files = {'file': open(os.path.join(UPLOAD_DIR, new_name), 'rb')}
     if DIR=='':
-        req = requests.post("http://"+ip+":3443"+"/grey/storage_upload/"+key+"/"+toktok, files=files)
+        req = requests.post("https://"+ip+":3443"+"/grey/storage_upload/"+key+"/"+toktok, files=files, verify=False)
     else:
-        req = requests.post("http://"+ip+":3443"+"/grey/storage_upload/"+key+"/"+toktok+"/"+DIR, files=files)
+        req = requests.post("https://"+ip+":3443"+"/grey/storage_upload/"+key+"/"+toktok+"/"+DIR, files=files, verify=False)
     
     # remove the file from local storage    
     if os.path.exists(os.path.join(UPLOAD_DIR, new_name)):
@@ -371,9 +371,9 @@ def delete_file(toktok, gkey, FILE, DIR=''):
         return "Unable to locate the file"
 
     if DIR=='':
-        req = requests.get("http://"+vmip+":3443"+"/grey/storage_delete_file/"+nkey+"/"+toktok+"/"+FILE)
+        req = requests.get("https://"+vmip+":3443"+"/grey/storage_delete_file/"+nkey+"/"+toktok+"/"+FILE, verify=False)
     else:
-        req = requests.get("http://"+vmip+":3443"+"/grey/storage_delete_file/"+nkey+"/"+toktok+"/"+FILE+"/"+DIR)
+        req = requests.get("https://"+vmip+":3443"+"/grey/storage_delete_file/"+nkey+"/"+toktok+"/"+FILE+"/"+DIR, verify=False)
 
     if "INVALID" in req.text or req.text == "File is not present in Greyfish":
         return req.text
@@ -468,9 +468,9 @@ def upload_dir(gkey, toktok, DIR=''):
     
     files = {'file': open(os.path.join(UPLOAD_DIR, new_name), 'rb')}
     if DIR=='':
-        req = requests.post("http://"+ip+":3443"+"/grey/storage_upload_dir/"+key+"/"+toktok, files=files)
+        req = requests.post("https://"+ip+":3443"+"/grey/storage_upload_dir/"+key+"/"+toktok, files=files, verify=False)
     else:
-        req = requests.post("http://"+ip+":3443"+"/grey/storage_upload_dir/"+key+"/"+toktok+"/"+DIR, files=files)
+        req = requests.post("https://"+ip+":3443"+"/grey/storage_upload_dir/"+key+"/"+toktok+"/"+DIR, files=files, verify=False)
 
     # remove the file from local storage    
     if os.path.exists(UPLOAD_DIR):
@@ -538,9 +538,9 @@ def upload_replace_dir(gkey, toktok, DIR=''):
             dir_vm,_=bf.get_folder_vm(toktok,DIR+'++'+dirnames[0])
         if len(dir_vm)>0:
             if DIR=='':
-                delete = requests.get("http://"+URL_BASE+":2443/grey/delete_dir/"+gkey+"/"+toktok+"/"+dirnames[0])
+                delete = requests.get("https://"+URL_BASE+":2443/grey/delete_dir/"+gkey+"/"+toktok+"/"+dirnames[0], verify=False)
             else:
-                delete = requests.get("http://"+URL_BASE+":2443/grey/delete_dir/"+gkey+"/"+toktok+"/"+DIR+'++'+dirnames[0])
+                delete = requests.get("https://"+URL_BASE+":2443/grey/delete_dir/"+gkey+"/"+toktok+"/"+DIR+'++'+dirnames[0], verify=False)
         dirsize = bf.get_dir_size(os.path.join(UPLOAD_DIR,dirnames[0]))
         vmip, nkey = bf.get_available_vms(dirsize)
     except:
@@ -566,9 +566,9 @@ def upload_replace_dir(gkey, toktok, DIR=''):
     
     files = {'file': open(os.path.join(UPLOAD_DIR, new_name), 'rb')}
     if DIR=='':
-        req = requests.post("http://"+ip+":3443"+"/grey/storage_upload_dir/"+key+"/"+toktok, files=files)
+        req = requests.post("https://"+ip+":3443"+"/grey/storage_upload_dir/"+key+"/"+toktok, files=files, verify=False)
     else:
-        req = requests.post("http://"+ip+":3443"+"/grey/storage_upload_dir/"+key+"/"+toktok+"/"+DIR, files=files)
+        req = requests.post("https://"+ip+":3443"+"/grey/storage_upload_dir/"+key+"/"+toktok+"/"+DIR, files=files, verify=False)
 
     # remove the file from local storage    
     if os.path.exists(UPLOAD_DIR):
@@ -590,9 +590,11 @@ def delete_dir(toktok, gkey, DIR):
         return "INVALID key"
 
     vmip,nkey=bf.get_folder_vm(toktok,DIR)
+    if len(vmip)==0 or len(nkey)==0:
+        return "INVALID, Directory not found"
     #fsize=0
     for i in range(len(vmip)):
-        req = requests.get("http://"+vmip[i]+":3443"+"/grey/storage_delete_dir/"+nkey[i]+"/"+toktok+"/"+DIR)
+        req = requests.get("https://"+vmip[i]+":3443"+"/grey/storage_delete_dir/"+nkey[i]+"/"+toktok+"/"+DIR, verify=False)
         if req.text=="INVALID node key" or req.text=="User directory does not exist":
             continue
     bf.greyfish_log(IP_addr, toktok, "delete", "single dir", '/'.join(DIR.split('++')))

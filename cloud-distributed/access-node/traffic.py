@@ -35,9 +35,9 @@ def grey_file(gkey, toktok, FIL, DIR=''):
         return "INVALID, Unable to locate the file"
     
     if DIR=='':
-        req = requests.get("http://"+vmip+":3443"+"/grey/storage_grey/"+nkey+"/"+toktok+"/"+FIL)
+        req = requests.get("https://"+vmip+":3443"+"/grey/storage_grey/"+nkey+"/"+toktok+"/"+FIL, verify=False)
     else:
-        req = requests.get("http://"+vmip+":3443"+"/grey/storage_grey/"+nkey+"/"+toktok+"/"+FIL+"/"+DIR)
+        req = requests.get("https://"+vmip+":3443"+"/grey/storage_grey/"+nkey+"/"+toktok+"/"+FIL+"/"+DIR, verify=False)
 
     if "INVALID" in req.text:
         return req.text
@@ -95,11 +95,11 @@ def grey_dir(gkey, toktok, DIR=''):
         return "INVALID, Unable to locate the directory"
     for i in range(len(vmip)):
         if DIR=='':
-            req = requests.get("http://"+vmip[i]+":3443"+"/grey/storage_grey_dir/"+nkey[i]+"/"+toktok,stream=True)
-            delete = requests.get("http://"+vmip[i]+":3443/grey/storage_delete_file/"+nkey[i]+"/"+toktok+"/summary.tar.gz")
+            req = requests.get("https://"+vmip[i]+":3443"+"/grey/storage_grey_dir/"+nkey[i]+"/"+toktok,stream=True, verify=False)
+            delete = requests.get("https://"+vmip[i]+":3443/grey/storage_delete_file/"+nkey[i]+"/"+toktok+"/summary.tar.gz", verify=False)
         else:
-            req = requests.get("http://"+vmip[i]+":3443"+"/grey/storage_grey_dir/"+nkey[i]+"/"+toktok+"/"+DIR,stream=True)
-            delete = requests.get("http://"+vmip[i]+":3443/grey/storage_delete_file/"+nkey[i]+"/"+toktok+"/summary.tar.gz/"+DIR)
+            req = requests.get("https://"+vmip[i]+":3443"+"/grey/storage_grey_dir/"+nkey[i]+"/"+toktok+"/"+DIR,stream=True, verify=False)
+            delete = requests.get("https://"+vmip[i]+":3443/grey/storage_delete_file/"+nkey[i]+"/"+toktok+"/summary.tar.gz/"+DIR, verify=False)
         if "INVALID" in req.text:
             continue
         else:
@@ -156,8 +156,8 @@ def grey_dir_json(gkey, toktok):
 
     vmip,nkey=bf.get_folder_vm(toktok,'')
     for i in range(len(vmip)):
-        req = requests.get("http://"+vmip[i]+":3443"+"/grey/storage_grey_dir/"+nkey[i]+"/"+toktok,stream=True)
-        delete = requests.get("http://"+vmip[i]+":3443/grey/storage_delete_file/"+nkey[i]+"/"+toktok+"/summary.tar.gz")
+        req = requests.get("https://"+vmip[i]+":3443"+"/grey/storage_grey_dir/"+nkey[i]+"/"+toktok,stream=True, verify=False)
+        delete = requests.get("https://"+vmip[i]+":3443/grey/storage_delete_file/"+nkey[i]+"/"+toktok+"/summary.tar.gz", verify=False)
         if "INVALID" in req.text:
             continue
         else:

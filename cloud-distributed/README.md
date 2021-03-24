@@ -25,6 +25,13 @@ vi .env
 vi initdb/start.sql
 ```
 
+Obtain a certificate file (*.crt*) and private key (*.key*), make sure they are named *certfile.crt* and *keyfile.key*, respectively.  
+If none are available, execute the following commands and answer the prompts as appropriate:
+```bash
+# Based on https://www.digitalocean.com/community/tutorials/openssl-essentials-working-with-ssl-certificates-private-keys-and-csrs
+# Creates a certificate valid for 365 days
+openssl req -newkey rsa:2048 -nodes -keyout keyfile.key -x509 -days 365 -out certfile.crt
+```
 
 Start manager node:
 ```bash
@@ -70,6 +77,13 @@ git checkout distributed
 cd cloud-distributed/access-node
 ```
 
+Obtain a certificate file (*.crt*) and private key (*.key*), make sure they are named *certfile.crt* and *keyfile.key*, respectively.  
+If none are available, execute the following commands and answer the prompts as appropriate:
+```bash
+# Based on https://www.digitalocean.com/community/tutorials/openssl-essentials-working-with-ssl-certificates-private-keys-and-csrs
+# Creates a certificate valid for 365 days
+openssl req -newkey rsa:2048 -nodes -keyout keyfile.key -x509 -days 365 -out certfile.crt
+```
 
 Setup a access node, using the same *orchestra_key*, *greyfish_key*,  *Mysql Credentials*, *INFLUX Credentials* and *URL_BASE* environmental variables as the manager node. All the environmental variables are described in the [access node Dockerfile](./access-node/Dockerfile). Build the image by doing:
 ```bash
@@ -110,6 +124,13 @@ git checkout distributed
 cd cloud-distributed/storage-node
 ```
 
+Obtain a certificate file (*.crt*) and private key (*.key*), make sure they are named *certfile.crt* and *keyfile.key*, respectively.  
+If none are available, execute the following commands and answer the prompts as appropriate:
+```bash
+# Based on https://www.digitalocean.com/community/tutorials/openssl-essentials-working-with-ssl-certificates-private-keys-and-csrs
+# Creates a certificate valid for 365 days
+openssl req -newkey rsa:2048 -nodes -keyout keyfile.key -x509 -days 365 -out certfile.crt
+```
 
 Setup a storage node, using the same *orchestra_key*, *Mysql Credentials* and *URL_BASE* environmental variables as the manager node. Other environmental variables are defined below:
 * NODE_KEY: Individual key associated with each node

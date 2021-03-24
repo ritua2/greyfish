@@ -15,7 +15,7 @@ def add_user(userid=None,gkey=None):
         print("Please enter the greyfish key")
         return
     data = {'user_id':userid,"gkey":gkey}
-    r = requests.post("http://"+server_IP+":2443/grey/create_user", json = data)
+    r = requests.post("https://"+server_IP+":2443/grey/create_user", json = data, verify=False)
     print(r.text)
 
 def remove_user(userid=None,gkey=None):
@@ -26,7 +26,7 @@ def remove_user(userid=None,gkey=None):
         print("Please enter the greyfish key")
         return
     data = {'user_id':userid,"gkey":gkey}
-    r = requests.post("http://"+server_IP+":2443/grey/delete_user", json = data)
+    r = requests.post("https://"+server_IP+":2443/grey/delete_user", json = data, verify=False)
     print(r.text)
 
 def upload_file(userid=None,gkey=None,file=None,dir=''):
@@ -42,9 +42,9 @@ def upload_file(userid=None,gkey=None,file=None,dir=''):
     
     files = {'file': open(file,'rb')}
     if dir=='':
-        r=requests.post("http://"+server_IP+":2443/grey/upload/"+gkey+"/"+userid,files=files)
+        r=requests.post("https://"+server_IP+":2443/grey/upload/"+gkey+"/"+userid,files=files, verify=False)
     else:
-        r=requests.post("http://"+server_IP+":2443/grey/upload/"+gkey+"/"+userid+"/"+dir,files=files)
+        r=requests.post("https://"+server_IP+":2443/grey/upload/"+gkey+"/"+userid+"/"+dir,files=files, verify=False)
     print(r.text)
 
 def download_file(userid=None,gkey=None,file=None,ddir=None,dir=''):
@@ -62,9 +62,9 @@ def download_file(userid=None,gkey=None,file=None,ddir=None,dir=''):
         return
    
     if dir=='':
-        r=requests.get("http://"+download_IP+":2443/grey/grey/"+gkey+"/"+userid+"/"+file)
+        r=requests.get("https://"+download_IP+":2443/grey/grey/"+gkey+"/"+userid+"/"+file, verify=False)
     else:
-        r=requests.get("http://"+download_IP+":2443/grey/grey/"+gkey+"/"+userid+"/"+file+"/"+dir)
+        r=requests.get("https://"+download_IP+":2443/grey/grey/"+gkey+"/"+userid+"/"+file+"/"+dir, verify=False)
     
     if "INVALID" in r.text:
         print(r.text)
@@ -85,9 +85,9 @@ def delete_file(userid=None,gkey=None,file=None,dir=''):
         return
     
     if dir=='':
-        r=requests.get("http://"+server_IP+":2443/grey/delete_file/"+gkey+"/"+userid+"/"+file)
+        r=requests.get("https://"+server_IP+":2443/grey/delete_file/"+gkey+"/"+userid+"/"+file, verify=False)
     else:
-        r=requests.get("http://"+server_IP+":2443/grey/delete_file/"+gkey+"/"+userid+"/"+file+"/"+dir)
+        r=requests.get("https://"+server_IP+":2443/grey/delete_file/"+gkey+"/"+userid+"/"+file+"/"+dir, verify=False)
     print(r.text)
 
 def upload_dir(userid=None,gkey=None,file=None,dir=''):
@@ -103,9 +103,9 @@ def upload_dir(userid=None,gkey=None,file=None,dir=''):
     
     files = {'file': open(file,'rb')}
     if dir=='':
-        r=requests.post("http://"+server_IP+":2443/grey/upload_dir/"+gkey+"/"+userid,files=files)
+        r=requests.post("https://"+server_IP+":2443/grey/upload_dir/"+gkey+"/"+userid,files=files, verify=False)
     else:
-        r=requests.post("http://"+server_IP+":2443/grey/upload_dir/"+gkey+"/"+userid+"/"+dir,files=files)
+        r=requests.post("https://"+server_IP+":2443/grey/upload_dir/"+gkey+"/"+userid+"/"+dir,files=files, verify=False)
     print(r.text)
 
 def upload_replace_dir(userid=None,gkey=None,file=None,dir=''):
@@ -121,9 +121,9 @@ def upload_replace_dir(userid=None,gkey=None,file=None,dir=''):
     
     files = {'file': open(file,'rb')}
     if dir=='':
-        r=requests.post("http://"+server_IP+":2443/grey/upload_replace_dir/"+gkey+"/"+userid,files=files)
+        r=requests.post("https://"+server_IP+":2443/grey/upload_replace_dir/"+gkey+"/"+userid,files=files, verify=False)
     else:
-        r=requests.post("http://"+server_IP+":2443/grey/upload_replace_dir/"+gkey+"/"+userid+"/"+dir,files=files)
+        r=requests.post("https://"+server_IP+":2443/grey/upload_replace_dir/"+gkey+"/"+userid+"/"+dir,files=files, verify=False)
     print(r.text)
 
 def download_dir(userid=None,gkey=None, d_dir=None, dir=''):
@@ -138,9 +138,9 @@ def download_dir(userid=None,gkey=None, d_dir=None, dir=''):
         return
    
     if dir=='':
-        r=requests.get("http://"+download_IP+":2443/grey/grey_dir/"+gkey+"/"+userid)
+        r=requests.get("https://"+download_IP+":2443/grey/grey_dir/"+gkey+"/"+userid, verify=False)
     else:
-        r=requests.get("http://"+download_IP+":2443/grey/grey_dir/"+gkey+"/"+userid+"/"+dir)
+        r=requests.get("https://"+download_IP+":2443/grey/grey_dir/"+gkey+"/"+userid+"/"+dir, verify=False)
     
     if "INVALID" in r.text:
         print(r.text)
@@ -164,7 +164,7 @@ def delete_dir(userid=None,gkey=None,dir=None):
         print("Please enter the directory")
         return
     else:
-        r=requests.get("http://"+server_IP+":2443/grey/delete_dir/"+gkey+"/"+userid+"/"+dir)
+        r=requests.get("https://"+server_IP+":2443/grey/delete_dir/"+gkey+"/"+userid+"/"+dir, verify=False)
     print(r.text)
 
 def view_user_dir(userid=None,gkey=None):
@@ -174,7 +174,7 @@ def view_user_dir(userid=None,gkey=None):
     if gkey==None:
         print("Please enter the greyfish key")
         return
-    r=requests.get("http://"+download_IP+":2443/grey/grey_dir_json/"+gkey+"/"+userid)
+    r=requests.get("https://"+download_IP+":2443/grey/grey_dir_json/"+gkey+"/"+userid, verify=False)
     print(r.text)
 
 #####################
