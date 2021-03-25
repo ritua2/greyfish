@@ -87,6 +87,9 @@ openssl req -newkey rsa:2048 -nodes -keyout keyfile.key -x509 -days 365 -out cer
 
 Setup a access node, using the same *orchestra_key*, *greyfish_key*,  *Mysql Credentials*, *INFLUX Credentials* and *URL_BASE* environmental variables as the manager node. All the environmental variables are described in the [access node Dockerfile](./access-node/Dockerfile). Build the image by doing:
 ```bash
+# Ensure all the environment variablles are set as instructed
+vi Dockerfile
+# Build the docker image
 docker build -t greyfish/access-node:latest .
 ```
 
@@ -136,10 +139,13 @@ Setup a storage node, using the same *orchestra_key*, *Mysql Credentials* and *U
 * NODE_KEY: Individual key associated with each node
 * FILESYSTEM: Filesystem where all data will stored. 'overlay', by default.
 * MAX_STORAGE: Maximum total storage allowed for users in KB, must be a positive integer
-* RESERVED_STORAGE: Reserved storage allowed for the compressed files for downloads in KB apart from MAX_STORAGE, must be a positive integer and less than MAM_STORAGE((1/3) * MAX_STORAGE recommended)
+* RESERVED_STORAGE: Reserved storage allowed for the compressed files for downloads in KB apart from MAX_STORAGE, must be a positive integer and less than MAX_STORAGE((1/3) * MAX_STORAGE recommended)
 
 All the environmental variables are described in the [storage node Dockerfile](./storage-node/Dockerfile). Build the image by doing:
 ```bash
+# Ensure all the environment variablles are set as instructed
+vi Dockerfile
+# Build the docker image
 docker build -t greyfish/storage-node:latest .
 ```
 
@@ -180,7 +186,7 @@ To access this script pull this directory:
 git clone https://github.com/ritua2/greyfish.git
 cd greyfish
 git checkout distributed
-cd cloud-distributed
+cd cloud-distributed/speed-testing
 vi pilot.py
 ```
 

@@ -141,6 +141,29 @@ def structure_in_json(PATH = '.'):
 
     return FSJ
 
+
+# Returns a dictionary showing all the files in a directory (defaults to working directory)
+def structure_in_json_user(userid):
+    files={}
+    grey_db = mysql_con.connect(host = os.environ["URL_BASE"] , port = 6603, user = os.environ["MYSQL_USER"] , password = os.environ["MYSQL_PASSWORD"], database = os.environ["MYSQL_DATABASE"])
+    cursor = grey_db.cursor(buffered=True)
+    cursor.execute("select id, directory from file where user_id=%s group by id, directory order by directory",(userid,))
+    file=[]
+    dir=[]
+    for row in cursor:
+        if row[0]=='' and row[1]=='':
+            continue
+        file.append(row[0])
+        dir.append(row[1])
+    for x,y in zip(file,dir):
+        files.setdefault(y.replace('++','/'),[]).append(x)
+    for k in files:
+        if len(files[k])>1:
+            files[k].remove('')
+    cursor.close()
+    grey_db.close()
+    return files
+
 # Returns a string in UTC time in the format YYYY-MM-DD HH:MM:SS.XXXXXX (where XXXXXX are microseconds)
 def timformat():
     return datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S.%f")

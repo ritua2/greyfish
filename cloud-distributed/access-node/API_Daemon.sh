@@ -20,7 +20,7 @@ fi
 
 
 if [ $1 == "-up" ]; then 
-  gunicorn -w $greyfish_threads --certfile=certfile.crt --keyfile=keyfile.key -b 0.0.0.0:2443 traffic:app &
+  gunicorn -w $greyfish_threads --certfile=certfile.crt --keyfile=keyfile.key -b 0.0.0.0:3443 traffic:app &
   printf "Greyfish APIs are now active\n"
 fi
 

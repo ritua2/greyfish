@@ -93,6 +93,7 @@ def grey_dir(gkey, toktok, DIR=''):
     vmip,nkey=bf.get_folder_vm(toktok,DIR)
     if len(vmip)==0:
         return "INVALID, Unable to locate the directory"
+
     for i in range(len(vmip)):
         if DIR=='':
             req = requests.get("https://"+vmip[i]+":3443"+"/grey/storage_grey_dir/"+nkey[i]+"/"+toktok,stream=True, verify=False)
@@ -149,37 +150,7 @@ def grey_dir_json(gkey, toktok):
         bf.failed_login(gkey, IP_addr, toktok, "download-dir")
         return "INVALID key"
 
-    USER_DIR=GREYFISH_FOLDER+'DIR_'+str(toktok)+'/home'
-    if os.path.exists(USER_DIR):
-        shutil.rmtree(USER_DIR)
-    os.makedirs(USER_DIR)
-
-    vmip,nkey=bf.get_folder_vm(toktok,'')
-    for i in range(len(vmip)):
-        req = requests.get("https://"+vmip[i]+":3443"+"/grey/storage_grey_dir/"+nkey[i]+"/"+toktok,stream=True, verify=False)
-        delete = requests.get("https://"+vmip[i]+":3443/grey/storage_delete_file/"+nkey[i]+"/"+toktok+"/summary.tar.gz", verify=False)
-        if "INVALID" in req.text:
-            continue
-        else:
-            if os.path.exists(USER_DIR+'summary.tar.gz'):
-                os.remove(USER_DIR+'summary.tar.gz')
-
-            with open(USER_DIR+'summary.tar.gz','wb') as fd:
-                for chunk in req.iter_content(chunk_size=128):
-                    fd.write(chunk)
-
-            with tarfile.open(USER_DIR+'summary.tar.gz',"r:gz") as tf:
-                tf.extractall(USER_DIR)
-            os.remove(USER_DIR+'summary.tar.gz')
-
-    json = jsonify(bf.structure_in_json(USER_DIR))
-    os.chdir(USER_DIR)
-    for ff in os.listdir('.'):
-        if os.path.isdir(ff):
-            shutil.rmtree(ff)
-        else:
-            os.remove(ff)
-
+    json = jsonify(bf.structure_in_json_user(toktok))
     return json
 if __name__ == '__main__':
    app.run()

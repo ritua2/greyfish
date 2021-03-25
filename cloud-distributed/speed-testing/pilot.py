@@ -62,9 +62,9 @@ def download_file(userid=None,gkey=None,file=None,ddir=None,dir=''):
         return
    
     if dir=='':
-        r=requests.get("https://"+download_IP+":2443/grey/grey/"+gkey+"/"+userid+"/"+file, verify=False)
+        r=requests.get("https://"+download_IP+":3443/grey/grey/"+gkey+"/"+userid+"/"+file, verify=False)
     else:
-        r=requests.get("https://"+download_IP+":2443/grey/grey/"+gkey+"/"+userid+"/"+file+"/"+dir, verify=False)
+        r=requests.get("https://"+download_IP+":3443/grey/grey/"+gkey+"/"+userid+"/"+file+"/"+dir, verify=False)
     
     if "INVALID" in r.text:
         print(r.text)
@@ -138,9 +138,9 @@ def download_dir(userid=None,gkey=None, d_dir=None, dir=''):
         return
    
     if dir=='':
-        r=requests.get("https://"+download_IP+":2443/grey/grey_dir/"+gkey+"/"+userid, verify=False)
+        r=requests.get("https://"+download_IP+":3443/grey/grey_dir/"+gkey+"/"+userid, verify=False)
     else:
-        r=requests.get("https://"+download_IP+":2443/grey/grey_dir/"+gkey+"/"+userid+"/"+dir, verify=False)
+        r=requests.get("https://"+download_IP+":3443/grey/grey_dir/"+gkey+"/"+userid+"/"+dir, verify=False)
     
     if "INVALID" in r.text:
         print(r.text)
@@ -174,7 +174,7 @@ def view_user_dir(userid=None,gkey=None):
     if gkey==None:
         print("Please enter the greyfish key")
         return
-    r=requests.get("https://"+download_IP+":2443/grey/grey_dir_json/"+gkey+"/"+userid, verify=False)
+    r=requests.get("https://"+download_IP+":3443/grey/grey_dir_json/"+gkey+"/"+userid, verify=False)
     print(r.text)
 
 #####################
