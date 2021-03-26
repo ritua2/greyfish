@@ -152,8 +152,9 @@ The [speed-testing](./speed-testing) subdirectory contains a series of python sc
 
 All current Greyfish servers used for testing are setup using the Jetstream \[1\]\[2\] and Chameleon\[3\] systems. We are grateful to XSEDE for providing the allocation required for implementing this project. This project is generously supported through the National Science Foundation (NSF) award \#1664022.  
 
+#### Cite As
 
-
+Carlos Redondo and Ritu Arora. 2019. Greyfish: An Out-of-the-Box, Reusable, Portable Cloud Storage Service. In Proceedings of the Practice and Experience in Advanced Research Computing on Rise of the Machines (learning) (PEARC '19). Association for Computing Machinery, New York, NY, USA, Article 13, 1–6. DOI:https://doi.org/10.1145/3332186.3333055
 
 #### References
 
