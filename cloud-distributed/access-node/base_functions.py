@@ -48,6 +48,22 @@ def valid_orchestra_key(provided_key):
     else:
         return False
 
+# Checks if the user is valid
+def valid_user(unam):
+    grey_db = mysql_con.connect(host = os.environ["URL_BASE"] , port = 6603, user = os.environ["MYSQL_USER"] , password = os.environ["MYSQL_PASSWORD"], database = os.environ["MYSQL_DATABASE"])
+    cursor = grey_db.cursor(buffered=True)
+    cursor.execute("select * from user where name=%s",(unam,))
+    uc=None
+    for row in cursor:
+        uc=row[0]
+
+    cursor.close()
+    grey_db.close()
+    if uc != None:
+        return True
+    else:
+        return False
+
 # Update file checksum
 def update_file_checksum(toktok,new_name,vmip,DIR,checksum):
     grey_db = mysql_con.connect(host = os.environ["URL_BASE"] , port = 6603, user = os.environ["MYSQL_USER"] , password = os.environ["MYSQL_PASSWORD"], database = os.environ["MYSQL_DATABASE"])

@@ -29,10 +29,15 @@ def grey_file(gkey, toktok, FIL, DIR=''):
     if not bf.valid_key(gkey, toktok):
         bf.failed_login(gkey, IP_addr, toktok, "download-file")
         return "INVALID key"
+
+    # user must be added to the database beforehand
+    if not bf.valid_user(toktok):
+        bf.failed_login(gkey, IP_addr, toktok, "download-file")
+        return "INVALID user"
     
     vmip,nkey = bf.get_file_vm(toktok,FIL,DIR)
     if vmip == None or nkey == None:
-        return "INVALID, Unable to locate the file"
+        return "INVALID, File not found"
     
     if DIR=='':
         req = requests.get("https://"+vmip+":3443"+"/grey/storage_grey/"+nkey+"/"+toktok+"/"+FIL, verify=False)
@@ -85,6 +90,11 @@ def grey_dir(gkey, toktok, DIR=''):
         bf.failed_login(gkey, IP_addr, toktok, "download-dir")
         return "INVALID key"
 
+    # user must be added to the database beforehand
+    if not bf.valid_user(toktok):
+        bf.failed_login(gkey, IP_addr, toktok, "download-dir")
+        return "INVALID user"
+
     USER_DIR=GREYFISH_FOLDER+'DIR_'+str(toktok)+'/download/'
     if os.path.exists(USER_DIR):
         shutil.rmtree(USER_DIR)
@@ -92,7 +102,7 @@ def grey_dir(gkey, toktok, DIR=''):
 
     vmip,nkey=bf.get_folder_vm(toktok,DIR)
     if len(vmip)==0:
-        return "INVALID, Unable to locate the directory"
+        return "INVALID, Directory not found"
 
     for i in range(len(vmip)):
         if DIR=='':
@@ -147,8 +157,13 @@ def grey_dir_json(gkey, toktok):
 
     IP_addr = request.environ['REMOTE_ADDR']
     if not bf.valid_key(gkey, toktok):
-        bf.failed_login(gkey, IP_addr, toktok, "download-dir")
+        bf.failed_login(gkey, IP_addr, toktok, "view-data")
         return "INVALID key"
+
+    # user must be added to the database beforehand
+    if not bf.valid_user(toktok):
+        bf.failed_login(gkey, IP_addr, toktok, "view-data")
+        return "INVALID user"
 
     json = jsonify(bf.structure_in_json_user(toktok))
     return json

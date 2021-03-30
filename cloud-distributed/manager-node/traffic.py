@@ -366,9 +366,14 @@ def delete_file(toktok, gkey, FILE, DIR=''):
         bf.failed_login(gkey, IP_addr, toktok, "delete-file")
         return "INVALID key"
 
+    # user must be added to the database beforehand
+    if not bf.valid_user(toktok):
+        bf.failed_login(gkey, IP_addr, toktok, "delete-file")
+        return "INVALID user"
+
     vmip,nkey = bf.get_file_vm(toktok,FILE,DIR)
     if vmip == None or nkey == None:
-        return "Unable to locate the file"
+        return "INVALID, file not found"
 
     if DIR=='':
         req = requests.get("https://"+vmip+":3443"+"/grey/storage_delete_file/"+nkey+"/"+toktok+"/"+FILE, verify=False)
@@ -397,7 +402,7 @@ def upload_dir(gkey, toktok, DIR=''):
 
     # user must be added to the database beforehand
     if not bf.valid_user(toktok):
-        bf.failed_login(gkey, IP_addr, toktok, "upload-file")
+        bf.failed_login(gkey, IP_addr, toktok, "upload-dir")
         return "INVALID user"
     
     parent_dir_vm,_=bf.get_folder_vm(toktok,DIR)
@@ -479,7 +484,7 @@ def upload_dir(gkey, toktok, DIR=''):
     if "INVALID" in req.text or "ERROR" in req.text:
         return req.text
 
-    #bf.greyfish_log(IP_addr, toktok, "upload", "dir", '/'.join(DIR.split('++')))
+    bf.greyfish_log(IP_addr, toktok, "upload", "dir", '/'.join(DIR.split('++')))
     return req.text
 
 # Uploads one directory, it the directory already exists, then it deletes it and uploads the new contents
@@ -489,12 +494,12 @@ def upload_dir(gkey, toktok, DIR=''):
 def upload_replace_dir(gkey, toktok, DIR=''):
     IP_addr = request.environ['REMOTE_ADDR']
     if not bf.valid_key(gkey, toktok):
-        #bf.failed_login(gkey, IP_addr, toktok, "upload-dir")
+        bf.failed_login(gkey, IP_addr, toktok, "upload-replace-dir")
         return "INVALID key"
 
     # user must be added to the database beforehand
     if not bf.valid_user(toktok):
-        #bf.failed_login(gkey, IP_addr, toktok, "upload-file")
+        bf.failed_login(gkey, IP_addr, toktok, "upload-replace-dir")
         return "INVALID user"
     
     parent_dir_vm,_=bf.get_folder_vm(toktok,DIR)
@@ -577,7 +582,7 @@ def upload_replace_dir(gkey, toktok, DIR=''):
     if "INVALID" in req.text or "ERROR" in req.text:
         return req.text
 
-    bf.greyfish_log(IP_addr, toktok, "upload", "dir", '/'.join(DIR.split('++')))
+    bf.greyfish_log(IP_addr, toktok, "upload-replace", "dir", '/'.join(DIR.split('++')))
     return req.text
 
 # Deletes a directory
@@ -589,10 +594,15 @@ def delete_dir(toktok, gkey, DIR):
         bf.failed_login(gkey, IP_addr, toktok, "delete-dir")
         return "INVALID key"
 
+    # user must be added to the database beforehand
+    if not bf.valid_user(toktok):
+        bf.failed_login(gkey, IP_addr, toktok, "delete-dir")
+        return "INVALID user"
+
     vmip,nkey=bf.get_folder_vm(toktok,DIR)
     if len(vmip)==0 or len(nkey)==0:
         return "INVALID, Directory not found"
-    #fsize=0
+ 
     for i in range(len(vmip)):
         req = requests.get("https://"+vmip[i]+":3443"+"/grey/storage_delete_dir/"+nkey[i]+"/"+toktok+"/"+DIR, verify=False)
         if req.text=="INVALID node key" or req.text=="User directory does not exist":
