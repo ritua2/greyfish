@@ -1,0 +1,107 @@
+<html>
+    <head>
+        <title>Distributed Greyfish</title>
+   
+    </head>
+    <body>
+	    <!--	    <h2>Mandatory Fields</h2><br/> -->
+	    <form name='form'>
+	    Username: <input type="text" id="uname" name="uname" placeholder="Enter username" onblur="document.form1.uname.value = this.value;document.form2.uname.value = this.value;document.form3.uname.value = this.value;document.form4.uname.value = this.value;document.form5.uname.value = this.value;document.form6.uname.value = this.value;document.form7.uname.value = this.value;document.form8.uname.value = this.value;document.form9.uname.value = this.value" /> 
+		Greyfish Key: <input type="password" id="gkey" name="gkey" placeholder="Enter greyfish key" onblur="document.form1.gkey.value = this.value;document.form2.gkey.value = this.value;document.form3.gkey.value = this.value;document.form4.gkey.value = this.value;document.form5.gkey.value = this.value;document.form6.gkey.value = this.value;document.form7.gkey.value = this.value;document.form8.gkey.value = this.value;document.form9.gkey.value = this.value" />
+	    </form>
+	    <div id="error"></div>
+
+	    <table>
+		    <tr>
+			    <td>
+				    <form action="/create_user" method="POST" name='form1' id="form1">
+				    <input type="hidden" id="uname" name="uname" value=''>
+                		    <input type="hidden" id="gkey" name="gkey" value=''>
+				    <input type="submit" value="Create User">
+            			    </form>
+			    </td>
+			    <td>
+                                    <form action="/delete_user" method="POST" name='form2'>
+                                    <input type="hidden" id="uname" name="uname">
+                                    <input type="hidden" id="gkey" name="gkey">
+                                    <input type="submit" value="Delete User">
+                                    </form>
+			    </td>
+			    <td>
+                                    <form action="/view_data" method="POST" name='form9'>
+                                    <input type="hidden" id="uname" name="uname">
+                                    <input type="hidden" id="gkey" name="gkey">
+                                    <input type="submit" value="View Data">
+                                    </form>
+			    </td>
+		    </tr>
+		    <tr>
+			    <td>
+				    <p style="color:DodgerBlue;">{{create_user}}</p>
+			    </td>
+			    <td>
+				    <p style="color:DodgerBlue;">{{delete_user}}</p>
+			    </td>
+			    <td>
+				    <p style="color:DodgerBlue;">{{view_data}}</p>
+			    </td> 
+		    </tr>
+	    </table>
+
+	    <h2 style="color:Tomato;">File Upload</h2><br/>
+			<form action="/file_upload" method="POST" enctype = "multipart/form-data" name="form3">
+				<input type="hidden" id="uname" name="uname">
+				<input type="hidden" id="gkey" name="gkey">
+				Select file:<input type="file" id="file" name="file">
+				Directory path on cloud: <input type="text" id="ucdir" name="ucdir" placeholder="Enter path from cloud ">
+				<input type="submit" value="Upload File"><p style="color:DodgerBlue;">{{file_upload}}</p>
+			</form>
+
+	    <h2 style="color:Tomato;">File Download</h2><br/>
+            <form action="/file_download" method="POST" name="form4">
+				<input type="hidden" id="uname" name="uname">
+                <input type="hidden" id="gkey" name="gkey">
+				<small style="color:MediumSeaGreen;">Larger files takes a while to download the data.</small><br/>
+                Name of the file :<input type="text" id="dwfile" name="dwfile" placeholder="Enter filename with extension">
+                Directory path on cloud: <input type="text" id="dwcdir" name="dwcdir" placeholder="Enter path from cloud ">
+				<input type="submit" value="Download File"><p style="color:DodgerBlue;">{{file_download}}</p>
+            </form>
+
+        <h2 style="color:Tomato;">File Delete</h2><br/>
+			<form action="/file_delete" method="POST" name="form5">
+				<input type="hidden" id="uname" name="uname">
+                <input type="hidden" id="gkey" name="gkey">
+                Filename:<input type="text" id="dfile" name="dfile" placeholder="Enter filename with extension">
+                Directory path on cloud: <input type="text" id="dcdir" name="dcdir" placeholder="Enter path from cloud ">
+				<input type="submit" value="Delete File"><p style="color:DodgerBlue;">{{file_delete}}</p>
+            </form>
+
+	    <h2 style="color:Tomato;">Directory Upload</h2><br/>
+			<small style="color:MediumSeaGreen;">Directory to be uploaded must be in .tar.gz or .tgz file.</small><br/>
+            <form action="/directory_upload" method="POST" enctype = "multipart/form-data" name="form6">
+				<input type="hidden" id="uname" name="uname">
+                <input type="hidden" id="gkey" name="gkey">
+				Select file:<input type="file" id="file" name="file">
+				<input type="checkbox" id="replace" name="replace">Replace if directory exist. &nbsp;  &nbsp; &nbsp;
+                Directory path on cloud: <input type="text" id="ucdir" name="ucdir" placeholder="Enter path from cloud ">
+				<input type="submit" value="Upload Directory"><p style="color:DodgerBlue;">{{dir_upload}}</p>
+            </form>
+	    
+	    <h2 style="color:Tomato;">Directory Download</h2><br/>
+            <form action="/directory_download" method="POST" name="form7">
+				<input type="hidden" id="uname" name="uname">
+                <input type="hidden" id="gkey" name="gkey">
+                Directory path on cloud: <input type="text" id="dwdir" name="dwdir" placeholder="Enter path from cloud">
+				<input type="submit" value="Download Directory "><p style="color:DodgerBlue;">{{dir_download}}</p>
+            </form>
+
+		<h2 style="color:Tomato;">Directory Delete</h2><br/>
+            <form action="/directory_delete" method="POST" name="form8">
+				<input type="hidden" id="uname" name="uname">
+                <input type="hidden" id="gkey" name="gkey">
+                Directory path on cloud: <input type="text" id="dcdir" name="dcdir" placeholder="Enter path from cloud ">
+				<input type="submit" value="Delete Directory"><p style="color:DodgerBlue;">{{dir_delete}}</p>
+            </form>
+
+    </body>
+</html>
