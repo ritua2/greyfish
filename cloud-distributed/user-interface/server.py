@@ -1,8 +1,8 @@
 from flask import Flask, request, render_template, send_file, after_this_request
 from werkzeug.utils import secure_filename
 import requests, tarfile, os
-server_IP=""
-download_IP=""
+server_IP=os.environ["MANAGER_NODE_IP"]
+download_IP=os.environ["ACCESS_NODE_IP"]
 
 app = Flask(__name__)
 
@@ -341,4 +341,4 @@ def view_data_ui():
     return index('view_data',msg)
 
 if __name__ == "__main__":
-    app.run(host='0.0.0.0',port=5000,debug='True')
+    app.run()
