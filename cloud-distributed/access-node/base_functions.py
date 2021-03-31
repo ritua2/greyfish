@@ -174,7 +174,7 @@ def structure_in_json_user(userid):
     for x,y in zip(file,dir):
         files.setdefault(y.replace('++','/'),[]).append(x)
     for k in files:
-        if len(files[k])>1:
+        if len(files[k])>1 and '' in files[k]:
             files[k].remove('')
     cursor.close()
     grey_db.close()

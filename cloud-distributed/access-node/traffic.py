@@ -44,7 +44,7 @@ def grey_file(gkey, toktok, FIL, DIR=''):
     else:
         req = requests.get("https://"+vmip+":3443"+"/grey/storage_grey/"+nkey+"/"+toktok+"/"+FIL+"/"+DIR, verify=False)
 
-    if "INVALID" in req.text:
+    if "INVALID" in req.text and len(req.text)<40:
         return req.text
     
     USER_DIR=GREYFISH_FOLDER+'DIR_'+str(toktok)+'/download/'
