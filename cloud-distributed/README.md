@@ -250,13 +250,15 @@ docker run --name userinterface_greyfish_1 -d -p 5000:5000 greyfish/user-interfa
 Enter the user-interface node docker container and activate the APIs:  
 ```bash
 # Enter container
-docker exec -it accessnode_greyfish_1 bash
+docker exec -it userinterface_greyfish_1 bash
 # Activate APIs(change the number of threads if needed, standard is 4)
 ./API_Daemon.sh -up
 # To deactivate APIs(Ignore this command if setting up the access node)
 ./API_Daemon.sh -down
 ```
 Note: deactivating the APIs will not change or delete any data, it will simply no longer be able to accept communications from outside.
+
+Access UI via: https://USERINTERFACENODEIP:5000/
 
 * **CURL commands**
 
