@@ -61,11 +61,10 @@ def upload_file(userid=None,gkey=None,file=None,dir=''):
         print("Please enter the filepath")
         return "Please enter the filepath"
 
-    files = {'file': open(file,'rb')}
     if dir=='':
-        r=requests.post("https://"+server_IP+":2443/grey/upload/"+gkey+"/"+userid,files=files, verify=False)
+        r=requests.post("https://"+server_IP+":2443/grey/upload/"+gkey+"/"+userid,data={"filename":secure_filename(file.filename)},files={'file':file}, verify=False)
     else:
-        r=requests.post("https://"+server_IP+":2443/grey/upload/"+gkey+"/"+userid+"/"+dir,files=files, verify=False)
+        r=requests.post("https://"+server_IP+":2443/grey/upload/"+gkey+"/"+userid+"/"+dir,data={"filename":secure_filename(file.filename)},files={'file':file}, verify=False)
     print(r.text)
     return r.text
 
@@ -127,11 +126,10 @@ def upload_dir(userid=None,gkey=None,file=None,dir=''):
         print("Please select the file")
         return "Please select the file"
 
-    files = {'file': open(file,'rb')}
     if dir=='':
-        r=requests.post("https://"+server_IP+":2443/grey/upload_dir/"+gkey+"/"+userid,files=files, verify=False)
+        r=requests.post("https://"+server_IP+":2443/grey/upload_dir/"+gkey+"/"+userid,data={"filename":secure_filename(file.filename)},files={'file':file}, verify=False)
     else:
-        r=requests.post("https://"+server_IP+":2443/grey/upload_dir/"+gkey+"/"+userid+"/"+dir,files=files, verify=False)
+        r=requests.post("https://"+server_IP+":2443/grey/upload_dir/"+gkey+"/"+userid+"/"+dir,data={"filename":secure_filename(file.filename)},files={'file':file}, verify=False)
     print(r.text)
     return r.text
 
@@ -146,11 +144,10 @@ def upload_replace_dir(userid=None,gkey=None,file=None,dir=''):
         print("Please select the file")
         return "Please select the file"
 
-    files = {'file': open(file,'rb')}
     if dir=='':
-        r=requests.post("https://"+server_IP+":2443/grey/upload_replace_dir/"+gkey+"/"+userid,files=files, verify=False)
+        r=requests.post("https://"+server_IP+":2443/grey/upload_replace_dir/"+gkey+"/"+userid,data={"filename":secure_filename(file.filename)},files={'file':file}, verify=False)
     else:
-        r=requests.post("https://"+server_IP+":2443/grey/upload_replace_dir/"+gkey+"/"+userid+"/"+dir,files=files, verify=False)
+        r=requests.post("https://"+server_IP+":2443/grey/upload_replace_dir/"+gkey+"/"+userid+"/"+dir,data={"filename":secure_filename(file.filename)},files={'file':file}, verify=False)
     print(r.text)
     return r.text
 
@@ -238,10 +235,7 @@ def upload_file_ui():
        return index('file_upload','INVALID, no file uploaded')
     if ',' in fnam:
        return index('file_upload',"INVALID, no ',' allowed in filenames")
-    new_name = secure_filename(fnam)
-    file.save(new_name)
-    msg=upload_file(name, key, new_name, ucdir.replace('/','++'))
-    os.remove(new_name)
+    msg=upload_file(name, key, file, ucdir.replace('/','++'))
     return index('file_upload',msg)
 
 @app.route("/file_download",methods=["GET","POST"])
@@ -294,13 +288,10 @@ def upload_dir_ui():
     # Untars the file, makes a directory if it does not exist
     if ('.tar.gz' not in fnam) and ('.tgz' not in fnam):
         return index('dir_upload','ERROR: Compression file not accepted, file must be .tgz or .tar.gz')
-    new_name = secure_filename(fnam)
-    file.save(new_name)
     if 'replace' in request.form:
-        msg=upload_replace_dir(name, key, new_name, ucdir.replace('/','++'))
+        msg=upload_replace_dir(name, key, file, ucdir.replace('/','++'))
     else:
-        msg=upload_dir(name, key, new_name, ucdir.replace('/','++'))
-    os.remove(new_name)
+        msg=upload_dir(name, key, file, ucdir.replace('/','++'))
     return index('dir_upload',msg)
 
 @app.route("/directory_download",methods=["GET","POST"])

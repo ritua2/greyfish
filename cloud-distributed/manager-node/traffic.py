@@ -297,7 +297,12 @@ def file_upload(toktok, gkey, DIR=''):
      #   return "INVALID Directory does not exist"
 
     file = request.files['file']
-    fnam = file.filename
+    fnam=''
+    if 'filename' in request.form:
+        fnam = request.form['filename']
+    else:
+        fnam = file.filename
+
     # Avoids empty filenames and those with commas
     if fnam == '':
        return 'INVALID, no file uploaded'
@@ -411,7 +416,11 @@ def upload_dir(gkey, toktok, DIR=''):
     #    return "INVALID Directory does not exist"
 
     file = request.files['file']
-    fnam = file.filename
+    fnam=''
+    if 'filename' in request.form:
+        fnam = request.form['filename']
+    else:
+        fnam = file.filename
     # Avoids empty filenames and those with commas
     if fnam == '':
         return 'INVALID, no file uploaded'
@@ -508,7 +517,12 @@ def upload_replace_dir(gkey, toktok, DIR=''):
     #    return "INVALID Directory does not exist"
 
     file = request.files['file']
-    fnam = file.filename
+    file = request.files['file']
+    fnam=''
+    if 'filename' in request.form:
+        fnam = request.form['filename']
+    else:
+        fnam = file.filename
     # Avoids empty filenames and those with commas
     if fnam == '':
         return 'INVALID, no file uploaded'
