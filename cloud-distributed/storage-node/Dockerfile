@@ -35,7 +35,7 @@ ENV MAX_STORAGE "1000000"
 # Reserved space for compressed files while downloading
 ENV RESERVED_STORAGE "300000"
 # number of threads to run
-ENV greyfish_threads "4"
+ENV greyfish_threads "8"
 
 
 

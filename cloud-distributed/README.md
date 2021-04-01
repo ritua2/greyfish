@@ -184,6 +184,8 @@ cd /grey
 
 #### Usage (distributed)
 
+* **Python script**
+
 The Greyfish APIs can be called from any system as long as the greyfish key is known. To simplify the usage of the greyfish a python script has been created which can run on any system which has python installed with following packages:
 * requests
 * tarfile
@@ -201,10 +203,11 @@ vi pilot.py
 The instructions on the usage of the script are defined inside script as comments. Also, a video has been recorded to demonstarte the usage of the script. 
 Link to the video: https://youtu.be/LG430D0IpeU
 
-A User-Interface could be also set up on any node to interact with distributed greyfish. It is recommended that iy is setup on the separate node than the nodes listed at the top of the page. Also this is optional, grreyfish can also be accesed using pilot script.
+
 
 * **User-Interface node**
 
+A User-Interface could be also set up on any node to interact with distributed greyfish. It is recommended that iy is setup on the separate node than the nodes listed at the top of the page. Also this is optional, greyfish can also be accesed using pilot script.
 Note: Can only be completed after installing the manager node, access node and storage nodes with the APIs and database containers being active
 
 
@@ -224,7 +227,8 @@ If none are available, execute the following commands and answer the prompts as 
 openssl req -newkey rsa:2048 -nodes -keyout keyfile.key -x509 -days 365 -out certfile.crt
 ```
 
-Setup a user-interface node, using the same  environmental variables as the manager node. All the environmental variables are described in the [user-interface node Dockerfile](./user-interface/Dockerfile).
+Setup a user-interface node, update environmental variables MANAGER_NODE_IP,ACCESS_NODE_IP and greyfish_threads according to the setup.
+All the environmental variables are described in the [user-interface node Dockerfile](./user-interface/Dockerfile).
 ```bash
 # Ensure all the environment variablles are set as instructed
 vi Dockerfile
@@ -254,6 +258,7 @@ docker exec -it accessnode_greyfish_1 bash
 ```
 Note: deactivating the APIs will not change or delete any data, it will simply no longer be able to accept communications from outside.
 
+* **CURL commands**
 
 The Greyfish APIs can be called from any system as long as the greyfish key is known.  
 Note that, if creating a private key and certicate (as described above), the *--insecure* flag may be required for the *curl* commands.
