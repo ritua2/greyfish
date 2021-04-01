@@ -85,10 +85,14 @@ If none are available, execute the following commands and answer the prompts as 
 openssl req -newkey rsa:2048 -nodes -keyout keyfile.key -x509 -days 365 -out certfile.crt
 ```
 
-Setup a access node, using the same *orchestra_key*, *greyfish_key*,  *Mysql Credentials*, *INFLUX Credentials* and *URL_BASE* environmental variables as the manager node. All the environmental variables are described in the [access node Dockerfile](./access-node/Dockerfile). Build the image by doing:
+Setup a access node, using the same *orchestra_key*, *greyfish_key*,  *Mysql Credentials*, *INFLUX Credentials* and *URL_BASE* environmental variables as the manager node. All the environmental variables are described in the [access node Dockerfile](./access-node/Dockerfile).
 ```bash
 # Ensure all the environment variablles are set as instructed
 vi Dockerfile
+```
+
+Build the image by doing:
+```bash
 # Build the docker image
 docker build -t greyfish/access-node:latest .
 ```
@@ -141,10 +145,14 @@ Setup a storage node, using the same *orchestra_key*, *Mysql Credentials* and *U
 * MAX_STORAGE: Maximum total storage allowed for users in KB, must be a positive integer
 * RESERVED_STORAGE: Reserved storage allowed for the compressed files for downloads in KB apart from MAX_STORAGE, must be a positive integer and less than MAX_STORAGE((1/3) * MAX_STORAGE recommended)
 
-All the environmental variables are described in the [storage node Dockerfile](./storage-node/Dockerfile). Build the image by doing:
+All the environmental variables are described in the [storage node Dockerfile](./storage-node/Dockerfile).
 ```bash
 # Ensure all the environment variablles are set as instructed
 vi Dockerfile
+```
+
+Build the image by doing:
+```bash
 # Build the docker image
 docker build -t greyfish/storage-node:latest .
 ```
@@ -192,6 +200,59 @@ vi pilot.py
 
 The instructions on the usage of the script are defined inside script as comments. Also, a video has been recorded to demonstarte the usage of the script. 
 Link to the video: https://youtu.be/LG430D0IpeU
+
+A User-Interface could be also set up on any node to interact with distributed greyfish. It is recommended that iy is setup on the separate node than the nodes listed at the top of the page. Also this is optional, grreyfish can also be accesed using pilot script.
+
+* **User-Interface node**
+
+Note: Can only be completed after installing the manager node, access node and storage nodes with the APIs and database containers being active
+
+
+Pull this directory:
+```bash
+git clone https://github.com/ritua2/greyfish.git
+cd greyfish
+git checkout distributed
+cd cloud-distributed/user-interface
+```
+
+Obtain a certificate file (*.crt*) and private key (*.key*), make sure they are named *certfile.crt* and *keyfile.key*, respectively.  
+If none are available, execute the following commands and answer the prompts as appropriate:
+```bash
+# Based on https://www.digitalocean.com/community/tutorials/openssl-essentials-working-with-ssl-certificates-private-keys-and-csrs
+# Creates a certificate valid for 365 days
+openssl req -newkey rsa:2048 -nodes -keyout keyfile.key -x509 -days 365 -out certfile.crt
+```
+
+Setup a user-interface node, using the same  environmental variables as the manager node. All the environmental variables are described in the [user-interface node Dockerfile](./user-interface/Dockerfile).
+```bash
+# Ensure all the environment variablles are set as instructed
+vi Dockerfile
+```
+Build the image by doing:
+```bash
+# Build the docker image
+docker build -t greyfish/user-interface:latest .
+```
+
+
+After building the image, activate the user-interface node by running the container as follows:
+```bash
+# Start container
+docker run --name userinterface_greyfish_1 -d -p 5000:5000 greyfish/user-interface:latest
+```
+
+
+Enter the user-interface node docker container and activate the APIs:  
+```bash
+# Enter container
+docker exec -it accessnode_greyfish_1 bash
+# Activate APIs(change the number of threads if needed, standard is 4)
+./API_Daemon.sh -up
+# To deactivate APIs(Ignore this command if setting up the access node)
+./API_Daemon.sh -down
+```
+Note: deactivating the APIs will not change or delete any data, it will simply no longer be able to accept communications from outside.
 
 
 The Greyfish APIs can be called from any system as long as the greyfish key is known.  
