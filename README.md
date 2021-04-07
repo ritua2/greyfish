@@ -1,4 +1,4 @@
-### Greyfish: A portable file management system for Virtual Machines (VMs) on-prem and in the cloud 
+### Distributed Greyfish: A scalable and portable file management system for Virtual Machines (VMs) on-prem and in the cloud 
 
 Greyfish is a simple, out-of-the-box software for provisioning a multi-user, containerized filesystem in the cloud or on-prem. If you are building a web-application for which you need to support multiple users, having personal accounts on a shared storage, then Greyfish can be useful in this scenario. It helps in creating a data "vault" with appropriate access privileges for the users. You can also use Greyfish for creating your own Box/Google Drive /DropBox like applications. It provides the functionality for file-management - file/folder upload, file/folder download, and data persistence. The latest release of Greyfish supports distributed storage across multiple Virtual Machines (VMs) for scalability and load-balancing. As it is container-based, it can help in creating a portable service that can be started on or moved to any VM/system that supports Docker.
 
