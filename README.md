@@ -5,7 +5,7 @@ Greyfish is a simple, out-of-the-box software for provisioning a multi-user, con
 Powered with a WSGI server, Greyfish is multi-threaded. Data stored in Greyfish can be easily monitored using grafana or any other app.  
 
 
-Greyfish allows single use tokens for specifc actions. These tokens are stored within a MySQL table, and can be accessed, created, or deleted from  another server or container within the same machine.
+Greyfish allows single use tokens for specific actions. These tokens are stored within a MySQL table, and can be accessed, created, or deleted from  another server or container within the same machine.
 
 
 --------------
